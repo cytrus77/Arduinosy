@@ -1,9 +1,11 @@
 #include <NanodeUNIO.h>
 #include <NanodeUIP.h>
 #include <NanodeMQTT.h>
+#include <Ethernet.h>
+#include <SPI.h>
 
 NanodeMQTT mqtt(&uip);
-
+EthernetServer server = EthernetServer(1883);
 void message_callback(const char* topic, uint8_t* payload, int payload_length)
 {
   Serial.print(topic);
@@ -35,12 +37,18 @@ void setup() {
   mqtt.connect();
   Serial.println("Connected to MQTT server");
 
-  mqtt.subscribe("test");
+  mqtt.subscribe("test/test1");
   Serial.println("Subscribed.");
-
+ // server.begin();
   Serial.println("setup() done");
 }
 
 void loop() {
   uip.poll();
+   // EthernetClient client = server.available();
+  //if (client == true) {
+    // read bytes from the incoming client and write them back
+    // to any clients connected to the server:
+   // Serial.println(client.read());
+ // }
 }
