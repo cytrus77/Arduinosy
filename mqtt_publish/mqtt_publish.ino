@@ -9,10 +9,8 @@
 
 dht11 DHT11;
 NanodeMQTT mqtt(&uip);
-struct timer my_timer;
 signed int temperatura;
 unsigned int wilgotnosc;
-EthernetServer server = EthernetServer(1025);
 
 
 void setup() {
@@ -32,16 +30,10 @@ void setup() {
   uip.wait_for_link();
   Serial.println("Link is up");
 
-  // Setup a timer - publish every 5 seconds
-  timer_set(&my_timer, CLOCK_SECOND * 5);
-
   // FIXME: resolve using DNS instead
   mqtt.set_server_addr(192, 168, 137, 2);
   mqtt.connect();
 
- mqtt.subscribe("test");
-  Serial.println("Subscribed.");
-  server.begin();
   Serial.println("setup() done");
 }
 
@@ -50,32 +42,35 @@ void setup() {
 
 void loop() {
   uip.poll();
-//  DHT11Pomiar();
-//  String tempStr = String(temperatura);
-//  String wilgStr = String(wilgotnosc);
-//  char charBuf[20];
+  static int i = 0;
+  DHT11Pomiar();
+  String tempStr = String(temperatura);
+  String wilgStr = String(wilgotnosc);
+  char charBuf[5];
 
-  if(1){//timer_expired(&my_timer)) {
-    timer_reset(&my_timer);
     if (mqtt.connected()) {
       Serial.println("Publishing...");
-      mqtt.publish("test", "Hello world");
-  //    tempStr.toCharArray(charBuf,20);
-    //  mqtt.publish("1262", charBuf); 
-  //    wilgStr.toCharArray(charBuf,20);
-  //    mqtt.publish("1263", charBuf); 
+      //switch(i){
+        //case 0: {
+          tempStr.toCharArray(charBuf,4);
+          mqtt.publish("1262", charBuf); 
+          Serial.println(charBuf);
+        //  i++;
+        //  break;  
+       // }
+       // case 1: {
+         delay(3000);
+          wilgStr.toCharArray(charBuf,4);
+          mqtt.publish("1263", charBuf);
+         Serial.println(charBuf);
+       //   i=0; 
+       //   break;
+ //        }
+    //  }
       Serial.println("Published.");
-      
-    }
-  }
-//  delay(1000);
-  EthernetClient client = server.available();
-  if (client == true) {
-    // read bytes from the incoming client and write them back
-    // to any clients connected to the server:
-    Serial.println(client.read());
-  }
-  
+      }
+  delay(1000);
+ 
 }
 
 
@@ -110,7 +105,8 @@ void DHT11Pomiar(){
     Serial.print("Humidity (%): ");
     Serial.println((float)DHT11.humidity, 2);
   
-    Serial.print("Temperature (°C): ");
+    Serial.print("Temperature (Â°C): ");
     Serial.println((float)DHT11.temperature, 2);
   }
 }
+
