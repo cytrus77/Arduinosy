@@ -5,7 +5,7 @@
 #include <dht11.h>
 #include <Ethernet.h>
 
-#define DHT11PIN 2
+#define DHT11PIN 3
 
 dht11 DHT11;
 NanodeMQTT mqtt(&uip);
