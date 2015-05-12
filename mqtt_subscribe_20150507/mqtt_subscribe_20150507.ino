@@ -11,16 +11,18 @@
 #define photoPin A7
 #define dht11Pin 3
 #define relayPin 5
-#define keyPin A6
+#define keyPin 6
 #define diodaPin 2
+
+#define Light_Time 10   //czas swiecenia sie swiatla w sekundach
 
 //MQTT Vars
 NanodeMQTT mqtt(&uip);
 
 //DHT11 Vars
-dht11 DHT11;
-signed int temperatura;
-unsigned int wilgotnosc;
+//dht11 DHT11;
+//signed int temperatura;
+//unsigned int wilgotnosc;
 
 //PIR Vars
 boolean motion = false; 
@@ -31,20 +33,35 @@ int photo = 0;
 //Gas vars
 int gas = 0;
 
-boolean relay = false;
-int key = 0;
-
-unsigned long uptime;
-
 void message_callback(const char* topic, uint8_t* payload, int payload_length)
 {
+  int data = 0;
+  
   #ifdef DEBUG
   Serial.print(topic);
   Serial.print(" => ");
   Serial.write(payload, payload_length);
   #endif
+    
   payload[payload_length] = 0;
-  relay = atoi((char *) payload);
+  data = atoi((char *) payload);
+
+  switch(atoi(topic))
+  {
+    case 1010:
+    {
+      digitalWrite(relayPin,data);
+      break;
+    }
+    case 1020:
+    {
+      analogWrite(keyPin, map(data,0,100,0,255));
+      break;
+    }
+    default:
+    break;
+  }
+  
   #ifdef DEBUG
   Serial.print(" Zmienna " );
   Serial.print(relay);
@@ -57,7 +74,10 @@ void message_callback(const char* topic, uint8_t* payload, int payload_length)
 void setup() {
   byte macaddr[6];
   NanodeUNIO unio(NANODE_MAC_DEVICE);
+  
+  #ifdef DEBUG
   Serial.begin(9600);
+  #endif
   
   //PIR section
   pinMode(pirPin, INPUT);
@@ -75,6 +95,7 @@ void setup() {
   uip.set_netmask(255, 255, 255, 0);
 
   uip.wait_for_link();
+  
   #ifdef DEBUG
   Serial.println("Link is up");
   #endif
@@ -88,15 +109,20 @@ void setup() {
   Serial.println("Connected to MQTT server");
   #endif
   
-  mqtt.subscribe("test");
+  mqtt.subscribe("1010");
+  mqtt.subscribe("1020");
   
   #ifdef DEBUG
   Serial.println("Subscribed.");
   Serial.println("setup() done");
   #endif
   
-  pinMode(relayPin, OUTPUT);  
-  pinMode(diodaPin, OUTPUT); 
+  pinMode(relayPin, OUTPUT);
+  digitalWrite(relayPin, 0);
+  pinMode(diodaPin, OUTPUT);
+  digitalWrite(relayPin, 0);
+  pinMode(keyPin, OUTPUT);
+  analogWrite(keyPin, 0);
 }
 
 
@@ -109,8 +135,6 @@ void loop() {
   PhotoPomiar();
   
   Mq2Pomiar();
-
-  digitalWrite(relayPin,relay);
   
   #ifdef DEBUG
   Serial.print("Przekaznik: ");
@@ -122,13 +146,12 @@ void loop() {
     Serial.println("Publishing...");
     #endif
     
-    SendMQTT(temperatura,"1261");
-    SendMQTT(wilgotnosc,"1262");
-    SendMQTT(photo,"1263");
-    SendMQTT(motion,"1264");
-    SendMQTT(gas,"1265");
-    uptime = millis()/1000;
-    SendMQTT(uptime,"1266");
+    //SendMQTT(temperatura,"1030");
+    //SendMQTT(wilgotnosc,"1090");
+    SendMQTT(photo,"1070");
+    SendMQTT(motion,"1040");
+    SendMQTT(gas,"1091");
+    SendMQTT(millis()/60000,"1000");
     
     #ifdef DEBUG    
     Serial.println("Published.");
@@ -137,8 +160,21 @@ void loop() {
     digitalWrite(diodaPin,HIGH);
   }
   else
-  {
+  {    
     digitalWrite(diodaPin,LOW);
+    
+    static long int PIR_Timer = 0;
+    
+    if(motion==1) 
+    {
+      PIR_Timer = millis();
+      analogWrite(keyPin, 255);
+    }
+    else if((millis()-PIR_Timer)/1000 > Light_Time) 
+    {
+      analogWrite(keyPin, 0);
+    }
+    
     
     #ifdef DEBUG
     Serial.println("PDALO POLACZENIE Z MQTT !!!!!!!!");
@@ -152,7 +188,7 @@ void loop() {
     
     mqtt.subscribe("test");
   }
-  delay(50);
+  //delay(15);
 }
 
 
@@ -169,13 +205,14 @@ void SendMQTT(int data, char* topic){
 
 void Mq2Pomiar(){
   gas = analogRead(mq2Pin);
+  //gas = map(gas,0,1024,0,100);
   
   #ifdef DEBUG
   Serial.print("Gaz: ");
   Serial.println(gas);
   #endif
   
-  if(gas > 250) 
+  if(gas > 25) 
   {
     #ifdef DEBUG
     Serial.println("UWAGA - WYKRYTO GAZ LUB DYM");
@@ -186,6 +223,7 @@ void Mq2Pomiar(){
 
 void PhotoPomiar() {
   photo = analogRead(photoPin);
+  //photo = map(photo,0,1024,0,100);
   
   #ifdef DEBUG
   Serial.print("Swiatlo: ");
@@ -193,7 +231,7 @@ void PhotoPomiar() {
   #endif
 }
 
-
+/*
 void DHT11Pomiar(){
   switch (DHT11.read(dht11Pin))
   {
@@ -227,7 +265,7 @@ void DHT11Pomiar(){
 		break;
   }
 }
-
+*/
 
 void PirPomiar (){
    if(digitalRead(pirPin) == HIGH){

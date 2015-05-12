@@ -7,7 +7,7 @@
 //#define DEBUG 1
 
 #define mq2Pin A5
-#define pirPin 2
+#define pirPin 3
 #define photoPin A4
 #define dht11Pin 4
 #define relayPin 5
@@ -90,14 +90,16 @@ void setup()
   
   //PIN Config section
   pinMode(pirPin, INPUT);
-  digitalWrite(pirPin, LOW);
+  //attachInterrupt(pirPin, PirPomiar, CHANGE);
+  
   pinMode(relayPin, OUTPUT);
   digitalWrite(relayPin, 0);
+  
   pinMode(diodaPin, OUTPUT);
-  digitalWrite(relayPin, 0);
+  digitalWrite(diodaPin, 0);
+  
   pinMode(keyPin, OUTPUT);
   analogWrite(keyPin, 0);
-  attachInterrupt(pirPin, PirPomiar, CHANGE);
   
   Ethernet.begin(mac, ip);
   if (client.connect("KuchniaClient")) {
@@ -115,7 +117,7 @@ void loop()
   client.loop();
   DHT11Pomiar();
    
-  //PirPomiar();
+  PirPomiar();
   
   PhotoPomiar();
   
@@ -281,6 +283,6 @@ void PirPomiar (){
    Serial.println(motion);
    #endif  
    Serial.println("Ruch: ");
-    Serial.println(motion);
+   Serial.println(motion);
 }
 
