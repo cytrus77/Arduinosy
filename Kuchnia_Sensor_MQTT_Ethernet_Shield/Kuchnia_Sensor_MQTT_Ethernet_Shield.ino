@@ -16,7 +16,7 @@
 #define gasDiodaPin 8
 #define floodPin A3
 
-#define Light_Time 10   //czas swiecenia sie swiatla w sekundach
+#define Light_Time 60   //czas swiecenia sie swiatla w sekundach
 
 //DHT11 Vars
 dht11 DHT11;
@@ -139,8 +139,6 @@ void loop()
   
   Mq2Pomiar();
   
-  DimmerSet(keyPin, &dimmer);
-  
   if(client.connected()){ 
     static int mqtt_counter = 0;
        
@@ -182,23 +180,26 @@ void loop()
     }
         
     digitalWrite(mqttDiodaPin,HIGH);
+    DimmerSet(keyPin, &dimmer);
   }
   else
   {    
     digitalWrite(mqttDiodaPin,LOW);
     
     static long int PIR_Timer = 0;
+    static int dimming = 0;
     
     if(motion==1) 
     {
       PIR_Timer = millis();
-      analogWrite(keyPin, 255);
+      dimming = 100;
     }
     else if((millis()-PIR_Timer)/1000 > Light_Time) 
     {
-      analogWrite(keyPin, 0);
+      dimming = 0;
     }
     
+    DimmerSet(keyPin, &dimming);
     
     #ifdef DEBUG
     Serial.println("PDALO POLACZENIE Z MQTT !!!!!!!!");
@@ -214,19 +215,28 @@ void loop()
         //client.subscribe("test");
     }
   }
-  delay(50);
+  //delay(50);
 }
 
 
 void DimmerSet(int pin, int* dimmer){
-  if(currentDimmer < *dimmer)
+  if(currentDimmer < (*dimmer)-10)
   {
+    currentDimmer=currentDimmer+10;
+  }
+  else if(currentDimmer > (*dimmer)+10)
+  {
+    currentDimmer=currentDimmer-10;
+  }
+  else if(currentDimmer < *dimmer)
+    {
     currentDimmer++;
   }
   else if(currentDimmer > *dimmer)
   {
     currentDimmer--;
   }
+  Serial.println(currentDimmer);
   //analogWrite(pin, map(currentDimmer,0,100,0,255));   //liniowo
   analogWrite(pin, map((currentDimmer*currentDimmer)/100,0,100,0,255));   //liniowo
 }
