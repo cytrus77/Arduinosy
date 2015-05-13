@@ -12,7 +12,9 @@
 #define dht11Pin 4
 #define relayPin 5
 #define keyPin 6
-#define diodaPin 7
+#define mqttDiodaPin 7
+#define gasDiodaPin 8
+#define floodPin A3
 
 #define Light_Time 10   //czas swiecenia sie swiatla w sekundach
 
@@ -29,6 +31,14 @@ int photo = 0;
 
 //Gas vars
 int gas = 0;
+
+//Flood var
+int flood = 0;
+
+//Dimmer
+int dimmer = 0;
+int currentDimmer = 0;
+
 
 // Update these with values suitable for your network.
 byte mac[]    = {  0xDE, 0xED, 0xBA, 0xFE, 0xFE, 0xEF };
@@ -71,7 +81,8 @@ void callback(char* topic, byte* payload, unsigned int length) {
     }
     case 1020:
     {
-      analogWrite(keyPin, map(data,0,100,0,255));
+      //analogWrite(keyPin, map(data,0,100,0,255));
+      dimmer = data;
       Serial.println("Dimmer");
       break;
     }
@@ -95,8 +106,11 @@ void setup()
   pinMode(relayPin, OUTPUT);
   digitalWrite(relayPin, 0);
   
-  pinMode(diodaPin, OUTPUT);
-  digitalWrite(diodaPin, 0);
+  pinMode(mqttDiodaPin, OUTPUT);
+  digitalWrite(mqttDiodaPin, 0);
+  
+  pinMode(gasDiodaPin, OUTPUT);
+  digitalWrite(gasDiodaPin, 0);
   
   pinMode(keyPin, OUTPUT);
   analogWrite(keyPin, 0);
@@ -121,7 +135,11 @@ void loop()
   
   PhotoPomiar();
   
+  FloodPomiar();
+  
   Mq2Pomiar();
+  
+  DimmerSet(keyPin, &dimmer);
   
   if(client.connected()){ 
     static int mqtt_counter = 0;
@@ -152,6 +170,10 @@ void loop()
         SendMQTT(millis()/60000,"1000");
         mqtt_counter++;
         break;
+      case 6:
+        SendMQTT(flood,"1092");
+        mqtt_counter++;
+        break;
       default:
         //mqtt_counter++;
         // if(mqtt_counter > 50) 
@@ -159,11 +181,11 @@ void loop()
         break; 
     }
         
-    digitalWrite(diodaPin,HIGH);
+    digitalWrite(mqttDiodaPin,HIGH);
   }
   else
   {    
-    digitalWrite(diodaPin,LOW);
+    digitalWrite(mqttDiodaPin,LOW);
     
     static long int PIR_Timer = 0;
     
@@ -192,7 +214,21 @@ void loop()
         //client.subscribe("test");
     }
   }
-  delay(250);
+  delay(50);
+}
+
+
+void DimmerSet(int pin, int* dimmer){
+  if(currentDimmer < *dimmer)
+  {
+    currentDimmer++;
+  }
+  else if(currentDimmer > *dimmer)
+  {
+    currentDimmer--;
+  }
+  //analogWrite(pin, map(currentDimmer,0,100,0,255));   //liniowo
+  analogWrite(pin, map((currentDimmer*currentDimmer)/100,0,100,0,255));   //liniowo
 }
 
 
@@ -216,12 +252,28 @@ void Mq2Pomiar(){
   Serial.println(gas);
   #endif
   
-  if(gas > 30) 
+  if(gas > 25) 
   {
+    digitalWrite(gasDiodaPin, HIGH);
     #ifdef DEBUG
     Serial.println("UWAGA - WYKRYTO GAZ LUB DYM");
     #endif
   }
+  else
+  {
+    digitalWrite(gasDiodaPin, LOW);
+  }
+}
+
+
+void FloodPomiar() {
+  flood = analogRead(floodPin);
+  flood = map(flood,0,1024,0,100);
+  
+  #ifdef DEBUG
+  Serial.print("Zalanie: ");
+  Serial.println(flood);
+  #endif
 }
 
 
