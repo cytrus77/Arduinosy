@@ -3,6 +3,7 @@
 #include <PubSubClient.h>
 #include <dht11.h>
 #include <string.h>
+#include "TimerOne.h"
 
 //#define DEBUG 1
 
@@ -16,7 +17,7 @@
 #define gasDiodaPin 8
 #define floodPin A3
 
-#define Light_Time 60   //czas swiecenia sie swiatla w sekundach
+#define Light_Time 120   //czas swiecenia sie swiatla w sekundach
 
 //DHT11 Vars
 dht11 DHT11;
@@ -81,7 +82,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
     }
     case 1020:
     {
-      //analogWrite(keyPin, map(data,0,100,0,255));
       dimmer = data;
       Serial.println("Dimmer");
       break;
@@ -123,7 +123,9 @@ void setup()
     client.subscribe("1020");
   }
   
-  
+  //Smooth dimming init
+  Timer1.initialize(12000);
+  Timer1.attachInterrupt(Dimmer1);
 }
 
 void loop()
@@ -180,27 +182,23 @@ void loop()
     }
         
     digitalWrite(mqttDiodaPin,HIGH);
-    DimmerSet(keyPin, &dimmer);
   }
   else
   {    
     digitalWrite(mqttDiodaPin,LOW);
     
     static long int PIR_Timer = 0;
-    static int dimming = 0;
-    
+       
     if(motion==1) 
     {
       PIR_Timer = millis();
-      dimming = 100;
+      dimmer = 100;
     }
     else if((millis()-PIR_Timer)/1000 > Light_Time) 
     {
-      dimming = 0;
+      dimmer = 0;
     }
-    
-    DimmerSet(keyPin, &dimming);
-    
+        
     #ifdef DEBUG
     Serial.println("PDALO POLACZENIE Z MQTT !!!!!!!!");
     #endif
@@ -218,27 +216,25 @@ void loop()
   //delay(50);
 }
 
+void Dimmer1()
+{
+  DimmerSet(keyPin, &dimmer);
+}
 
 void DimmerSet(int pin, int* dimmer){
-  if(currentDimmer < (*dimmer)-10)
+  static int tempDim = 0;
+  
+  if(currentDimmer < *dimmer)
   {
-    currentDimmer=currentDimmer+10;
-  }
-  else if(currentDimmer > (*dimmer)+10)
-  {
-    currentDimmer=currentDimmer-10;
-  }
-  else if(currentDimmer < *dimmer)
-    {
-    currentDimmer++;
+    tempDim++;
   }
   else if(currentDimmer > *dimmer)
   {
-    currentDimmer--;
+    tempDim--;
   }
-  Serial.println(currentDimmer);
-  //analogWrite(pin, map(currentDimmer,0,100,0,255));   //liniowo
-  analogWrite(pin, map((currentDimmer*currentDimmer)/100,0,100,0,255));   //liniowo
+   
+  currentDimmer = map(tempDim, 0, 255, 0, 100);
+  analogWrite(pin, tempDim*tempDim/255);   //kwadratowo
 }
 
 
@@ -344,7 +340,5 @@ void PirPomiar (){
    Serial.print("Ruch: ");
    Serial.println(motion);
    #endif  
-   Serial.println("Ruch: ");
-   Serial.println(motion);
 }
 
