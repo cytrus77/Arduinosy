@@ -232,7 +232,6 @@ void DimmerSet(int pin, int* dimmer){
   {
     tempDim--;
   }
-   
   currentDimmer = map(tempDim, 0, 255, 0, 100);
   analogWrite(pin, tempDim*tempDim/255);   //kwadratowo
 }
