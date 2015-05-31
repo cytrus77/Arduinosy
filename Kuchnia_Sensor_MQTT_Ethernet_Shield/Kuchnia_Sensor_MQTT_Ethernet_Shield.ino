@@ -5,7 +5,7 @@
 #include <string.h>
 #include "TimerOne.h"
 
-//#define DEBUG 1
+#define DEBUG 1
 
 #define mq2Pin A5
 #define pirPin 3
@@ -40,6 +40,8 @@ int flood = 0;
 int dimmer = 0;
 int currentDimmer = 0;
 
+long int uptime = 0;
+boolean mqtt_status = false;
 
 // Update these with values suitable for your network.
 byte mac[]    = {  0xDE, 0xED, 0xBA, 0xFE, 0xFE, 0xEF };
@@ -77,13 +79,11 @@ void callback(char* topic, byte* payload, unsigned int length) {
     case 1010:
     {
       digitalWrite(relayPin,data);
-      Serial.println("Przekaznik");
       break;
     }
     case 1020:
     {
-      dimmer = data;
-      Serial.println("Dimmer");
+      dimmer = data;    
       break;
     }
     default:
@@ -101,7 +101,6 @@ void setup()
   
   //PIN Config section
   pinMode(pirPin, INPUT);
-  //attachInterrupt(pirPin, PirPomiar, CHANGE);
   
   pinMode(relayPin, OUTPUT);
   digitalWrite(relayPin, 0);
@@ -116,77 +115,42 @@ void setup()
   analogWrite(keyPin, 0);
   
   Ethernet.begin(mac, ip);
+  delay(10000);
   if (client.connect("KuchniaClient")) {
-    delay(10000);
-    //client.publish("outTopic","hello world");
+    delay(1000);
     client.subscribe("1010");
     client.subscribe("1020");
   }
-  
-  //Smooth dimming init
-  Timer1.initialize(12000);
-  Timer1.attachInterrupt(Dimmer1);
 }
+
 
 void loop()
 {
   client.loop();
-  DHT11Pomiar();
-   
+  
+  Dimmer1();
+  DHT11Pomiar(); 
   PirPomiar();
-  
   PhotoPomiar();
-  
   FloodPomiar();
-  
   Mq2Pomiar();
   
   if(client.connected()){ 
-    static int mqtt_counter = 0;
-       
-    switch(mqtt_counter)
-    {
-      case 0:
-        SendMQTT(temperatura,"1030");
-        mqtt_counter++;
-        break;
-      case 1:   
-        SendMQTT(wilgotnosc,"1090");
-        mqtt_counter++;
-        break;
-      case 2:
-        SendMQTT(photo,"1070");
-        mqtt_counter++;
-        break;
-      case 3:
-        SendMQTT(motion,"1040");
-        mqtt_counter++;
-        break;
-      case 4:
-        SendMQTT(gas,"1091");
-        mqtt_counter++;
-        break;
-      case 5:
-        SendMQTT(millis()/60000,"1000");
-        mqtt_counter++;
-        break;
-      case 6:
-        SendMQTT(flood,"1092");
-        mqtt_counter++;
-        break;
-      default:
-        //mqtt_counter++;
-        // if(mqtt_counter > 50) 
-        mqtt_counter = 0;
-        break; 
-    }
-        
+     static long int uptime_temp = 0;
+     uptime = millis()/60000;
+     if(uptime_temp != uptime)
+     {
+         SendMQTT(uptime,"1000");
+         uptime_temp = uptime;
+         delay(150);
+     }        
     digitalWrite(mqttDiodaPin,HIGH);
+    mqtt_status = true;
   }
   else
   {    
     digitalWrite(mqttDiodaPin,LOW);
-    
+    mqtt_status = false;
     static long int PIR_Timer = 0;
        
     if(motion==1) 
@@ -213,13 +177,33 @@ void loop()
         //client.subscribe("test");
     }
   }
-  //delay(50);
 }
+
+
 
 void Dimmer1()
 {
+  static int dimmer_temp = 0;
+  if(dimmer != dimmer_temp)
+  {
+  //Smooth dimming interrupt init
+  Timer1.initialize(10000);
+  Timer1.attachInterrupt(DimmerInt);
+  dimmer_temp = dimmer;
+  #ifdef DEBUG
+  Serial.println("Timer 1 wlaczony!!!!!!");
+  #endif
+  }
+}
+
+
+void DimmerInt(){
+  #ifdef DEBUG
+  Serial.println("Przerwanie Timer 1 - Dimmer");
+  #endif
   DimmerSet(keyPin, &dimmer);
 }
+
 
 void DimmerSet(int pin, int* dimmer){
   static int tempDim = 0;
@@ -234,6 +218,13 @@ void DimmerSet(int pin, int* dimmer){
   }
   currentDimmer = map(tempDim, 0, 255, 0, 100);
   analogWrite(pin, tempDim*tempDim/255);   //kwadratowo
+  if(currentDimmer == *dimmer) 
+  {
+    #ifdef DEBUG
+    Serial.println("Timer 1 wylaczony");
+    #endif
+    Timer1.detachInterrupt();
+  }
 }
 
 
@@ -249,8 +240,18 @@ void SendMQTT(int data, char* topic){
 
 
 void Mq2Pomiar(){
+  static int gas_temp;
+  
   gas = analogRead(mq2Pin);
   gas = map(gas,0,1024,0,100);
+  
+          
+  if(gas_temp != gas && mqtt_status == true)
+  {
+     SendMQTT(gas,"1091");
+     gas_temp = gas;
+     delay(150);
+  }
   
   #ifdef DEBUG
   Serial.print("Gaz: ");
@@ -272,8 +273,17 @@ void Mq2Pomiar(){
 
 
 void FloodPomiar() {
+  static int flood_temp;
+  
   flood = analogRead(floodPin);
-  flood = map(flood,0,1024,0,100);
+  flood = map(flood,0,1024,100,0);
+  
+  if(flood_temp != flood && mqtt_status == true)
+  {
+    SendMQTT(flood,"1092");
+    flood_temp = flood;
+    delay(150);
+  }
   
   #ifdef DEBUG
   Serial.print("Zalanie: ");
@@ -283,8 +293,16 @@ void FloodPomiar() {
 
 
 void PhotoPomiar() {
+  static int photo_temp;
   photo = analogRead(photoPin);
-  photo = map(photo,0,1024,0,100);
+  photo = map(photo,0,1024,100,0);
+     
+  if(photo_temp != photo && mqtt_status == true)
+  {
+     SendMQTT(photo,"1070");
+     photo_temp = photo;
+     delay(150);
+  }
   
   #ifdef DEBUG
   Serial.print("Swiatlo: ");
@@ -297,6 +315,9 @@ void DHT11Pomiar(){
   switch (DHT11.read(dht11Pin))
   {
     case DHTLIB_OK: 
+                static signed int temperatura_temp;
+                static unsigned int wilgotnosc_temp;
+                
                 #ifdef DEBUG
                 Serial.println("\n");
                 Serial.print("DHT 11 Read sensor: ");
@@ -312,6 +333,19 @@ void DHT11Pomiar(){
                 Serial.print("Temperature (Â°C): ");
                 Serial.println((float)DHT11.temperature, 2);
                 #endif
+                
+                if(temperatura_temp != temperatura && mqtt_status == true)
+                {
+                    SendMQTT(temperatura,"1030");
+                    temperatura_temp = temperatura;
+                    delay(150);
+                }
+                if(wilgotnosc_temp != wilgotnosc && mqtt_status == true)
+                {
+                    SendMQTT(wilgotnosc,"1090");
+                    wilgotnosc_temp = wilgotnosc;
+                    delay(150);
+                }
                 
 		//Serial.println("OK"); 
 		break;
@@ -329,12 +363,22 @@ void DHT11Pomiar(){
 
 
 void PirPomiar (){
+  static boolean motion_temp; 
+  
    if(digitalRead(pirPin) == HIGH){
         motion = true;
        }
    else if(digitalRead(pirPin) == LOW){       
         motion = false;
        } 
+   
+   if(motion_temp != motion && mqtt_status == true)
+   {
+      SendMQTT(motion,"1040");
+      motion_temp = motion;
+      delay(150);
+   }    
+   
    #ifdef DEBUG
    Serial.print("Ruch: ");
    Serial.println(motion);
