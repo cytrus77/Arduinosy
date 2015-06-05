@@ -19,10 +19,16 @@
  * wiper to LCD VO pin (pin 3)
 */
 
+enum rotary{
+  left,
+  center,
+  right
+};
+
 //these pins can not be changed 2/3 are special pins
 int encoderPin1 = 2;
 int encoderPin2 = 3;
-int encoderSwitchPin = 4; //push button switch
+int encoderSwitchPin = A2; //push button switch
 int pwmPin = 0;
 int pirPin = A0;
 int fotoSensorPin = A1;
@@ -75,7 +81,11 @@ void loop() {
   //Do stuff here
   if (digitalRead(encoderSwitchPin)) {
     //button is not being pushed
-  } else {
+  //  Serial.println("Dont klink");
+    delay(50);
+  } 
+  else 
+  {
     //button is being pushed
     if(ledSwitch > 0.01){
       ledSwitch = 0;
@@ -86,47 +96,68 @@ void loop() {
       time = millis();
     }
     Serial.println("Klik");
-    delay(200);
+    delay(50);
   }
 
   pirTimer ();
   analogWrite(pwmPin, encoderValue*encoderValue*ledSwitch);
   char menu[10] = "Swiatelko";
-  LCDDispaly(menu, &encoderValue);
+  char submenu[4] = "Moc";
+  LCDDispaly(3, menu, submenu, &encoderValue);
   
-//Test code
-/*
-  Serial.println("Light sensor:");
-  Serial.println(analogRead(fotoSensorPin));
-  Serial.println("PWM:");
-  Serial.println(log((double)encoderValue + 1.0) * 55.372);
-  //Serial.println("Encoder value:");
-  //Serial.println(encoderValue);
-  Serial.println("Led switch:");
-  Serial.println(ledSwitch);
-*/  
-  delay(10); //just here to slow down the output, and show it will work  even during a delay
 
 }
 
-void LCDDispaly(char* menu, volatile long* value)
+void LCDDispaly(int pos, String menu, String submenu, volatile long* value)
 {
-  lcd.setCursor(0, 0);
-  lcd.print(*menu);
-  lcd.setCursor(0, 1);
+  static char txt_temp[16];
+  static long value_temp;
+  if(value_temp != *value)
+  {
+  lcd.clear();
+  if(pos==1) lcd.setCursor(0, 0);
+  else if(pos==2) lcd.setCursor(0, 1);
+  else if(pos==3) lcd.setCursor(11, 1);
+  lcd.print((char)0x7E);
+  lcd.setCursor(1, 0);
+  lcd.print(menu);
+  lcd.setCursor(1, 1);
+  lcd.print(submenu);
+  lcd.setCursor(12, 1);
   lcd.print(*value);
+  value_temp = *value;
+  }
 }
 
 void updateEncoder() {
+  static rotary encoderPosition = center;
   int MSB = digitalRead(encoderPin1); //MSB = most significant bit
   int LSB = digitalRead(encoderPin2); //LSB = least significant bit
 
   int encoded = (MSB << 1) | LSB; //converting the 2 pin value to single number
   int sum  = (lastEncoded << 2) | encoded; //adding it to the previous encoded value
 
-  if ((sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) && encoderValue < 100) encoderValue ++;
-  if ((sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) && encoderValue > 0) encoderValue --;
+  if ((sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) && encoderValue < 100 ) 
+  {
+    if(encoderPosition == right) 
+    {
+      encoderValue ++;
+      encoderPosition = center;
+    }
+    else if(encoderPosition == center) encoderPosition = right;
+    else if(encoderPosition == left) encoderPosition = center;
+  }
 
+  if ((sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) && encoderValue > 0 ) 
+  {
+    if(encoderPosition == left) 
+    {
+      encoderValue --;
+      encoderPosition = center;
+    }
+    else if(encoderPosition == center) encoderPosition = left;
+    else if(encoderPosition == right) encoderPosition = center;
+  }
   lastEncoded = encoded; //store this value for next time
 }
 
@@ -136,8 +167,8 @@ void pirTimer () {
   }
   else
   {
-    Serial.println("OFF Timer:");
-    Serial.println(millis() - time);
+ //   Serial.println("OFF Timer:");
+  //  Serial.println(millis() - time);
   }
 
   if (digitalRead(pirPin)) {

@@ -187,7 +187,7 @@ void Dimmer1()
   if(dimmer != dimmer_temp)
   {
   //Smooth dimming interrupt init
-  Timer1.initialize(10000);
+  Timer1.initialize(2000);
   Timer1.attachInterrupt(DimmerInt);
   dimmer_temp = dimmer;
   #ifdef DEBUG
