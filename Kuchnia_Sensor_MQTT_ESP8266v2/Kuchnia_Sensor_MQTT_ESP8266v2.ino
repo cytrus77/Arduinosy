@@ -14,6 +14,7 @@ SoftwareSerial debugPort(2, 3); // RX, TX
 ESP esp(&Serial, &debugPort, 4);
 MQTT mqtt(&esp);
 boolean wifiConnected = false;
+static unsigned int mainCounter = 0;
 
 void mqttConfig()
 {
@@ -65,16 +66,37 @@ void mqttDisconnected(void* response)
 
 void mqttData(void* response)
 {
+  int data = 0;
+  int topic = 0;
   RESPONSE res(response);
+  String topicStr = res.popString();
+  String dataStr = res.popString();
 
+  #ifdef DEBUG
   debugPort.print("Received: topic=");
-  String topic = res.popString();
-  debugPort.println(topic);
-
+  debugPort.println(topicStr);
   debugPort.print("data=");
-  String data = res.popString();
-  debugPort.println(data);
+  debugPort.println(dataStr);
+  #endif
+  
+  topic = atoi(topicStr.c_str());
+  data = atoi(dataStr.c_str());
 
+  switch(topic)
+  {
+    case MQTT_RELAY:
+    {
+      mqttBuffer[MQTT_RELAY_NO].Data  = data;
+      break;
+    }
+    case MQTT_DIMMER:
+    {  
+      mqttBuffer[MQTT_DIMMER_NO].Data = data;
+      break;
+    }
+    default:
+    break;
+  }
 }
 
 void mqttPublished(void* response)
@@ -143,9 +165,7 @@ void setup() {
 /////////////////////////////////////////////END SETUP/////////////////////////////////////////////////
 
 /////////////////////////////////////////////START MAIN LOOP/////////////////////////////////////////////////
-void loop() {
-  static unsigned int mainCounter = 0;
-  
+void loop() {  
   esp.process();
 //  wdt_reset();
   PhotoPomiar();
@@ -178,7 +198,7 @@ void loop() {
            }
     
         
-        if(!(mainCounter%5000)){
+        if(!(mainCounter%2500)){
             #ifdef LOG
             debugPort.print("Main counter: ");
             debugPort.println(mainCounter);
@@ -233,6 +253,7 @@ void loop() {
 void TimerLoop(){
   static unsigned int loopCounter = 0;
   loopCounter++;
+  mainCounter++;
   DimmerSet(KEYPIN, &mqttBuffer[MQTT_DIMMER_NO].Data);
   
   if(!(loopCounter%100)) PirPomiar();
