@@ -1,7 +1,6 @@
 #include <LiquidCrystal.h>
 //From bildr article: http://bildr.org/2012/08/rotary-encoder-arduino/
 
-#define Light_Time 120   //czas swiecenia sie swiatla w sekundach
 
 /*
   The circuit:
@@ -25,26 +24,42 @@ enum rotary{
   right
 };
 
+enum menuValue
+{
+  swiatloMale,
+  swiatloDuze
+};
+
+enum submenuValue
+{
+  moc,
+  czasSwiecenia
+};
+
+long Light_Time = 120*1000;   //czas swiecenia sie swiatla w milisekundach
+long PIR_Monitor_Time = 600*1000;   //czas sprawdzania PIR w milisekundach
+
 //these pins can not be changed 2/3 are special pins
 int encoderPin1 = 2;
 int encoderPin2 = 3;
 int encoderSwitchPin = A2; //push button switch
-int pwmPin = 0;
+int pwmPin = 10;   // PWM dla swiatelek podmonitorowych
+int pwm2Pin = 11;  // PWM dla swiatla duzego biurkowego
 int pirPin = A0;
-int fotoSensorPin = A1;
+//int fotoSensorPin = A1;
 
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd(9, 8, 7, 6, 5, 4);
 
 volatile int lastEncoded = 0;
-volatile long encoderValue = 0;
-
-long lastencoderValue = 0;
+volatile void * encoderValue;
+volatile void * encoderMax;
+volatile void * encoderMin;
 
 int lastMSB = 0;
 int lastLSB = 0;
 
-unsigned long lightTime = 60000; // w ms
+//unsigned long lightTime = 60000; // w ms
 unsigned long time;
 double ledSwitch;
 
@@ -54,20 +69,20 @@ void setup() {
   // set up the LCD's number of columns and rows:
   lcd.begin(16, 2);
   // Print a message to the LCD.
-  lcd.print("Uruchamianie!"); 
+  lcd.print("Wystartowalem"); 
 
   pinMode(encoderPin1, INPUT);
   pinMode(encoderPin2, INPUT);
 
   pinMode(encoderSwitchPin, INPUT);
   pinMode(pwmPin, OUTPUT);
+  pinMode(pwm2Pin, OUTPUT);
   pinMode(pirPin, INPUT);
 
   digitalWrite(encoderPin1, HIGH); //turn pullup resistor on
   digitalWrite(encoderPin2, HIGH); //turn pullup resistor on
 
   digitalWrite(encoderSwitchPin, HIGH); //turn pullup resistor on
-
 
   //call updateEncoder() when any high/low changed seen
   //on interrupt 0 (pin 2), or interrupt 1 (pin 3)
@@ -76,6 +91,7 @@ void setup() {
   ledSwitch = 1;
   time = millis();
 }
+
 
 void loop() {
   //Do stuff here
@@ -88,25 +104,28 @@ void loop() {
   {
     //button is being pushed
     if(ledSwitch > 0.01){
-      ledSwitch = 0;
+  //   ledSwitch = 0;
     }
     else
     {
       ledSwitch = 1;
       time = millis();
     }
+    #ifdef DEBUG
     Serial.println("Klik");
+    #endif
     delay(50);
   }
 
   pirTimer ();
-  analogWrite(pwmPin, encoderValue*encoderValue*ledSwitch);
+  analogWrite(pwmPin, (int)(encoderValue*encoderValue*ledSwitch)/40);
+  Serial.println(encoderValue);
+  Serial.println((int)(encoderValue*encoderValue*ledSwitch)/40);
   char menu[10] = "Swiatelko";
   char submenu[4] = "Moc";
   LCDDispaly(3, menu, submenu, &encoderValue);
-  
-
 }
+
 
 void LCDDispaly(int pos, String menu, String submenu, volatile long* value)
 {
@@ -115,10 +134,19 @@ void LCDDispaly(int pos, String menu, String submenu, volatile long* value)
   if(value_temp != *value)
   {
   lcd.clear();
-  if(pos==1) lcd.setCursor(0, 0);
-  else if(pos==2) lcd.setCursor(0, 1);
-  else if(pos==3) lcd.setCursor(11, 1);
-  lcd.print((char)0x7E);
+  if(pos==1) { 
+    lcd.setCursor(0, 0);
+    lcd.print((char)0x7E);
+  } 
+  else if(pos==2) {
+    lcd.setCursor(0, 1);
+    lcd.print((char)0x7E);
+  }
+  else if(pos==3) {
+    lcd.setCursor(11, 1);
+    lcd.print((char)0x7E);
+  }
+  
   lcd.setCursor(1, 0);
   lcd.print(menu);
   lcd.setCursor(1, 1);
@@ -129,6 +157,7 @@ void LCDDispaly(int pos, String menu, String submenu, volatile long* value)
   }
 }
 
+
 void updateEncoder() {
   static rotary encoderPosition = center;
   int MSB = digitalRead(encoderPin1); //MSB = most significant bit
@@ -137,22 +166,22 @@ void updateEncoder() {
   int encoded = (MSB << 1) | LSB; //converting the 2 pin value to single number
   int sum  = (lastEncoded << 2) | encoded; //adding it to the previous encoded value
 
-  if ((sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) && encoderValue < 100 ) 
+  if ((sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) && &encoderValue > 0 ) 
   {
     if(encoderPosition == right) 
     {
-      encoderValue ++;
+      &encoderValue --;
       encoderPosition = center;
     }
     else if(encoderPosition == center) encoderPosition = right;
     else if(encoderPosition == left) encoderPosition = center;
   }
 
-  if ((sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) && encoderValue > 0 ) 
+  if ((sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) && &encoderValue < 100 ) 
   {
     if(encoderPosition == left) 
     {
-      encoderValue --;
+      &encoderValue ++;
       encoderPosition = center;
     }
     else if(encoderPosition == center) encoderPosition = left;
@@ -161,20 +190,25 @@ void updateEncoder() {
   lastEncoded = encoded; //store this value for next time
 }
 
+
 void pirTimer () {
-  if (millis() - time > lightTime) {
+  if (millis() - time > Light_Time) {
     if (ledSwitch > 0.01) ledSwitch = ledSwitch - 0.01;
+    LCDDispaly(0, "Usypianie...", "", 0);
   }
-  else
+  else if (millis() - time > PIR_Monitor_Time)
   {
- //   Serial.println("OFF Timer:");
-  //  Serial.println(millis() - time);
+    if (ledSwitch < 1) ledSwitch = ledSwitch + 0.01;
+    LCDDispaly(0, "Spie sobie", "", 0);
   }
 
   if (digitalRead(pirPin)) {
+    #ifdef DEBUG
     Serial.println("Wykryto ruch");
+    #endif
     if (ledSwitch > 0.01) ledSwitch = 1;
     time = millis();
   }
 }
+
 

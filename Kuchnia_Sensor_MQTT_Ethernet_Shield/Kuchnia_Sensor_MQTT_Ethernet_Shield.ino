@@ -4,49 +4,24 @@
 #include <dht11.h>
 #include <string.h>
 #include "TimerOne.h"
+#include "Kuchnia.h"
+#include <avr/wdt.h>
 
-#define DEBUG 1
+//#define DEBUG 1
+//#define LOG 1
 
-#define mq2Pin A5
-#define pirPin 3
-#define photoPin A4
-#define dht11Pin 4
-#define relayPin 5
-#define keyPin 6
-#define mqttDiodaPin 7
-#define gasDiodaPin 8
-#define floodPin A3
-
-#define Light_Time 120   //czas swiecenia sie swiatla w sekundach
-
-//DHT11 Vars
-dht11 DHT11;
-signed int temperatura;
-unsigned int wilgotnosc;
-
-//PIR Vars
-boolean motion = false; 
-
-//Photo Vars
-int photo = 0;
-
-//Gas vars
-int gas = 0;
-
-//Flood var
-int flood = 0;
-
-//Dimmer
-int dimmer = 0;
-int currentDimmer = 0;
-
-long int uptime = 0;
-boolean mqtt_status = false;
-
-// Update these with values suitable for your network.
-byte mac[]    = {  0xDE, 0xED, 0xBA, 0xFE, 0xFE, 0xEF };
-byte server[] = { 192, 168, 137, 2 };
-byte ip[]     = { 192, 168, 137, 100 };
+void mqttConfig()
+{
+  mqttBuffer[MQTT_UPTIME_NO].Topic = MQTT_UPTIME;
+  mqttBuffer[MQTT_RELAY_NO].Topic  = MQTT_RELAY;
+  mqttBuffer[MQTT_DIMMER_NO].Topic = MQTT_DIMMER;
+  mqttBuffer[MQTT_GAS_NO].Topic    = MQTT_GAS;
+  mqttBuffer[MQTT_FLOOD_NO].Topic  = MQTT_FLOOD;
+  mqttBuffer[MQTT_PHOTO_NO].Topic  = MQTT_PHOTO;
+  mqttBuffer[MQTT_TEMP_NO].Topic   = MQTT_TEMP;
+  mqttBuffer[MQTT_HUMI_NO].Topic   = MQTT_HUMI;
+  mqttBuffer[MQTT_MOTION_NO].Topic = MQTT_MOTION;
+}
 
 // Callback function header
 void callback(char* topic, byte* payload, unsigned int length);
@@ -61,11 +36,11 @@ void callback(char* topic, byte* payload, unsigned int length) {
   // constructing the PUBLISH packet.
   int data = 0;
   
-  //#ifdef DEBUG
+  #ifdef DEBUG
   Serial.print(topic);
   Serial.print(" => ");
   Serial.write(payload, length);
-  //#endif
+  #endif
   
   // Allocate the correct amount of memory for the payload copy
   byte* p = (byte*)malloc(length+1);
@@ -76,14 +51,14 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
   switch(atoi(topic))
   {
-    case 1010:
+    case MQTT_RELAY:
     {
-      digitalWrite(relayPin,data);
+      mqttBuffer[MQTT_RELAY_NO].Data  = data;
       break;
     }
-    case 1020:
-    {
-      dimmer = data;    
+    case MQTT_DIMMER:
+    {  
+      mqttBuffer[MQTT_DIMMER_NO].Data = data;
       break;
     }
     default:
@@ -95,236 +70,279 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
 void setup()
 {
-  //#ifdef DEBUG
-  Serial.begin(9600);
-  //#endif
+  #ifdef DEBUG
+  Serial.begin(115200);
+  #endif
+  #ifdef LOG
+  Serial.begin(115200);
+  #endif
   
   //PIN Config section
-  pinMode(pirPin, INPUT);
+  pinMode(PIRPIN, INPUT);
+  //attachInterrupt(0, PirPomiar, CHANGE);
   
-  pinMode(relayPin, OUTPUT);
-  digitalWrite(relayPin, 0);
+  pinMode(RELAYPIN, OUTPUT);
+  digitalWrite(RELAYPIN, 0);
   
-  pinMode(mqttDiodaPin, OUTPUT);
-  digitalWrite(mqttDiodaPin, 0);
+  pinMode(MQTTDIODAPIN, OUTPUT);
+  digitalWrite(MQTTDIODAPIN, 0);
   
-  pinMode(gasDiodaPin, OUTPUT);
-  digitalWrite(gasDiodaPin, 0);
+  pinMode(GASDIODAPIN, OUTPUT);
+  digitalWrite(GASDIODAPIN, 0);
   
-  pinMode(keyPin, OUTPUT);
-  analogWrite(keyPin, 0);
+  pinMode(KEYPIN, OUTPUT);
+  analogWrite(KEYPIN, 0);
   
   Ethernet.begin(mac, ip);
-  delay(10000);
+  delay(5000);
   if (client.connect("KuchniaClient")) {
-    delay(1000);
+    delay(5000);
     client.subscribe("1010");
     client.subscribe("1020");
   }
+  
+  //Smooth dimming interrupt init
+  Timer1.initialize(2000);
+  Timer1.attachInterrupt(TimerLoop);
+  #ifdef DEBUG
+  Serial.println("Timer 1 wlaczony!!!!!!");
+  #endif
+  
+  mqttConfig();
+  wdt_enable(WDTO_8S);
 }
+/////////////////////////////////////////////END SETUP/////////////////////////////////////////////////
 
 
 void loop()
 {
+  static unsigned int mainCounter = 0; 
   client.loop();
-  
-  Dimmer1();
-  DHT11Pomiar(); 
-  PirPomiar();
+  wdt_reset();
   PhotoPomiar();
   FloodPomiar();
   Mq2Pomiar();
-  
+  mainCounter++;
   if(client.connected()){ 
-     static long int uptime_temp = 0;
-     uptime = millis()/60000;
-     if(uptime_temp != uptime)
-     {
-         SendMQTT(uptime,"1000");
-         uptime_temp = uptime;
-         delay(150);
-     }        
-    digitalWrite(mqttDiodaPin,HIGH);
+    mqttBuffer[MQTT_UPTIME_NO].Data = millis()/60000;
+       
+    digitalWrite(MQTTDIODAPIN,HIGH);
     mqtt_status = true;
+    
+    static boolean lastPir = false;
+    if(lastPir != mqttBuffer[MQTT_MOTION_NO].Data)
+       {
+           char dataChar[6];
+           char topicChar[6];
+           itoa(mqttBuffer[MQTT_MOTION_NO].Data, dataChar, 10);
+           itoa(mqttBuffer[MQTT_MOTION_NO].Topic, topicChar, 10);
+           client.publish(topicChar, dataChar);
+           #ifdef DEBUG
+           Serial.println("Sending MQTT");
+           Serial.println(topicChar);
+           Serial.println(dataChar);
+           #endif 
+           lastPir = mqttBuffer[MQTT_MOTION_NO].Data;
+           mainCounter = 1;
+       }
+
+    
+    if(!(mainCounter%2000)){
+        #ifdef LOG
+        Serial.print("Main counter: ");
+        Serial.println(mainCounter);
+        #endif
+        #ifdef DEBUG
+        Serial.println("Przerwanie Timer 1 - SendMQTT");
+        Serial.print("Przerwanie Timer 1 - Loop counter");
+        Serial.println(mainCounter);
+        #endif
+        SendMqtt();
+    }
+    
+    if(!(mainCounter%5000)){
+        #ifdef DEBUG
+        Serial.println("Przerwanie Timer 1 - DHT11");
+        #endif
+        DHT11Pomiar(); 
+    }
   }
   else
   {    
-    digitalWrite(mqttDiodaPin,LOW);
+    digitalWrite(MQTTDIODAPIN,LOW);
     mqtt_status = false;
     static long int PIR_Timer = 0;
-       
-    if(motion==1) 
+    static boolean auto_flag = false;
+    if(mqttBuffer[MQTT_MOTION_NO].Data==1 && mqttBuffer[MQTT_PHOTO_NO].Data < 45) 
     {
       PIR_Timer = millis();
-      dimmer = 100;
+      mqttBuffer[MQTT_DIMMER_NO].Data = 100;
+      auto_flag == true;
     }
-    else if((millis()-PIR_Timer)/1000 > Light_Time) 
+    else if(mqttBuffer[MQTT_MOTION_NO].Data==1 && auto_flag == true)
     {
-      dimmer = 0;
+      PIR_Timer = millis();
     }
-        
+    else if((millis()-PIR_Timer)/1000 > LIGHT_TIME) 
+    {
+      mqttBuffer[MQTT_DIMMER_NO].Data = 0;
+      auto_flag == false;
+    }
+    #ifdef LOG
+    Serial.println("PDALO POLACZENIE Z MQTT !!!!!!!!");
+    #endif    
     #ifdef DEBUG
     Serial.println("PDALO POLACZENIE Z MQTT !!!!!!!!");
     #endif
-    
-    if(client.connect("arduinoClient"))
-    {    
+    if(1)
+    {
+        static int mqttFails = 0;
         #ifdef DEBUG
-        Serial.println("Connected to MQTT server");
+         Serial.println("Recovery action dla MQTT");
         #endif
-        client.subscribe("1010");
-        client.subscribe("1020");
-        //client.subscribe("test");
+        ethClient.stop();
+        if(client.connect("KuchniaClient"))
+        {            
+            #ifdef DEBUG
+            Serial.println("Connected to MQTT server");
+            #endif
+            client.subscribe("1010");
+            client.subscribe("1020");
+            //client.subscribe("test");
+            mqttFails = 0;
+        }
+        else
+        {
+            mqttFails++;
+            #ifdef DEBUG
+            Serial.print("Increment mqtt fail counter :");
+            Serial.println(mqttFails);
+            #endif
+            ethClient.stop();
+            if(mqttFails > 25)
+            {
+                #ifdef LOG
+                Serial.println("WDG_RESET!!!!!!!!!!");
+                #endif    
+                #ifdef DEBUG
+                Serial.println("WDG_RESET!!!!!!!!!!");
+                #endif  
+                wdt_enable(WDTO_15MS);
+                while(1){}
+            }
+        }
     }
   }
 }
+/////////////////////////////////////////////END MAIN LOOP/////////////////////////////////////////////////
 
 
-
-void Dimmer1()
-{
-  static int dimmer_temp = 0;
-  if(dimmer != dimmer_temp)
-  {
-  //Smooth dimming interrupt init
-  Timer1.initialize(2000);
-  Timer1.attachInterrupt(DimmerInt);
-  dimmer_temp = dimmer;
-  #ifdef DEBUG
-  Serial.println("Timer 1 wlaczony!!!!!!");
-  #endif
-  }
-}
-
-
-void DimmerInt(){
-  #ifdef DEBUG
-  Serial.println("Przerwanie Timer 1 - Dimmer");
-  #endif
-  DimmerSet(keyPin, &dimmer);
+void TimerLoop(){
+  static unsigned int loopCounter = 0;
+  loopCounter++;
+  DimmerSet(KEYPIN, &mqttBuffer[MQTT_DIMMER_NO].Data);
+  
+  if(!(loopCounter%100)) PirPomiar();
 }
 
 
 void DimmerSet(int pin, int* dimmer){
   static int tempDim = 0;
-  
-  if(currentDimmer < *dimmer)
+  if(currentDimmer != *dimmer)
   {
-    tempDim++;
-  }
-  else if(currentDimmer > *dimmer)
-  {
-    tempDim--;
-  }
-  currentDimmer = map(tempDim, 0, 255, 0, 100);
-  analogWrite(pin, tempDim*tempDim/255);   //kwadratowo
-  if(currentDimmer == *dimmer) 
-  {
+    if(currentDimmer < *dimmer)
+    {
+      tempDim++;
+    }
+    else if(currentDimmer > *dimmer)
+    {
+      tempDim--;
+    }
+    currentDimmer = map(tempDim, 0, 255, 0, 100);
+    analogWrite(pin, tempDim*tempDim/255);   //kwadratowo
     #ifdef DEBUG
-    Serial.println("Timer 1 wylaczony");
+    Serial.println("Przerwanie Timer 1 - Dimmer");
     #endif
-    Timer1.detachInterrupt();
   }
 }
 
 
-void SendMQTT(int data, char* topic){
-  char charBuf[6];
-  itoa(data, charBuf, 10);
-  client.publish(topic, charBuf);
-  
-  #ifdef DEBUG
-  Serial.println(charBuf);
+void SendMqtt(){
+  static int counter = 0;
+  counter = (counter + 1)%7;
+  char dataChar[6];
+  char topicChar[6];
+  itoa(mqttBuffer[counter].Data, dataChar, 10);
+  itoa(mqttBuffer[counter].Topic, topicChar, 10);
+  client.publish(topicChar, dataChar);
+      
+  #ifdef LOG
+  Serial.println("Sending MQTT");
+  Serial.println(topicChar);
+  Serial.println(dataChar);
   #endif
 }
 
 
 void Mq2Pomiar(){
-  static int gas_temp;
-  
-  gas = analogRead(mq2Pin);
-  gas = map(gas,0,1024,0,100);
-  
-          
-  if(gas_temp != gas && mqtt_status == true)
-  {
-     SendMQTT(gas,"1091");
-     gas_temp = gas;
-     delay(150);
-  }
+  mqttBuffer[MQTT_GAS_NO].Data = analogRead(MQ2PIN);
+  mqttBuffer[MQTT_GAS_NO].Data = map(mqttBuffer[MQTT_GAS_NO].Data,0,1024,0,100);
   
   #ifdef DEBUG
   Serial.print("Gaz: ");
-  Serial.println(gas);
+  Serial.println(mqttBuffer[MQTT_GAS_NO].Data);
   #endif
   
-  if(gas > 25) 
+  if(mqttBuffer[MQTT_GAS_NO].Data > 25) 
   {
-    digitalWrite(gasDiodaPin, HIGH);
+    digitalWrite(GASDIODAPIN, HIGH);
     #ifdef DEBUG
     Serial.println("UWAGA - WYKRYTO GAZ LUB DYM");
     #endif
   }
   else
   {
-    digitalWrite(gasDiodaPin, LOW);
+    digitalWrite(GASDIODAPIN, LOW);
   }
 }
 
 
 void FloodPomiar() {
-  static int flood_temp;
-  
-  flood = analogRead(floodPin);
-  flood = map(flood,0,1024,100,0);
-  
-  if(flood_temp != flood && mqtt_status == true)
-  {
-    SendMQTT(flood,"1092");
-    flood_temp = flood;
-    delay(150);
-  }
-  
+  mqttBuffer[MQTT_FLOOD_NO].Data = analogRead(FLOODPIN);
+  mqttBuffer[MQTT_FLOOD_NO].Data = map(mqttBuffer[MQTT_FLOOD_NO].Data,0,1024,100,0);
+
   #ifdef DEBUG
   Serial.print("Zalanie: ");
-  Serial.println(flood);
+  Serial.println(mqttBuffer[MQTT_FLOOD_NO].Data);
   #endif
 }
 
 
 void PhotoPomiar() {
-  static int photo_temp;
-  photo = analogRead(photoPin);
-  photo = map(photo,0,1024,100,0);
-     
-  if(photo_temp != photo && mqtt_status == true)
-  {
-     SendMQTT(photo,"1070");
-     photo_temp = photo;
-     delay(150);
-  }
+  mqttBuffer[MQTT_PHOTO_NO].Data = analogRead(PHOTOPIN);
+  mqttBuffer[MQTT_PHOTO_NO].Data = map(mqttBuffer[MQTT_PHOTO_NO].Data,0,1024,100,0);
   
   #ifdef DEBUG
   Serial.print("Swiatlo: ");
-  Serial.println(photo);
+  Serial.println(mqttBuffer[MQTT_PHOTO_NO].Data);
   #endif
 }
 
 
 void DHT11Pomiar(){
-  switch (DHT11.read(dht11Pin))
+  switch (DHT11.read(DHT11PIN))
   {
-    case DHTLIB_OK: 
-                static signed int temperatura_temp;
-                static unsigned int wilgotnosc_temp;
-                
+    case DHTLIB_OK:              
                 #ifdef DEBUG
                 Serial.println("\n");
                 Serial.print("DHT 11 Read sensor: ");
                 #endif
                 
-                wilgotnosc = (int)DHT11.humidity;
-                temperatura = (int)DHT11.temperature;
+                if((int)DHT11.humidity != 0 && (int)DHT11.temperature != 0)
+                {
+                    mqttBuffer[MQTT_HUMI_NO].Data = (int)DHT11.humidity;
+                    mqttBuffer[MQTT_TEMP_NO].Data = (int)DHT11.temperature;
+                }
                 
                 #ifdef DEBUG
                 Serial.print("Humidity (%): ");
@@ -333,20 +351,7 @@ void DHT11Pomiar(){
                 Serial.print("Temperature (Â°C): ");
                 Serial.println((float)DHT11.temperature, 2);
                 #endif
-                
-                if(temperatura_temp != temperatura && mqtt_status == true)
-                {
-                    SendMQTT(temperatura,"1030");
-                    temperatura_temp = temperatura;
-                    delay(150);
-                }
-                if(wilgotnosc_temp != wilgotnosc && mqtt_status == true)
-                {
-                    SendMQTT(wilgotnosc,"1090");
-                    wilgotnosc_temp = wilgotnosc;
-                    delay(150);
-                }
-                
+
 		//Serial.println("OK"); 
 		break;
     case DHTLIB_ERROR_CHECKSUM: 
@@ -363,25 +368,20 @@ void DHT11Pomiar(){
 
 
 void PirPomiar (){
-  static boolean motion_temp; 
+  static boolean last_state = false;
+  boolean current_state;
+  current_state = digitalRead(PIRPIN);
   
-   if(digitalRead(pirPin) == HIGH){
-        motion = true;
-       }
-   else if(digitalRead(pirPin) == LOW){       
-        motion = false;
-       } 
-   
-   if(motion_temp != motion && mqtt_status == true)
-   {
-      SendMQTT(motion,"1040");
-      motion_temp = motion;
-      delay(150);
-   }    
-   
-   #ifdef DEBUG
-   Serial.print("Ruch: ");
-   Serial.println(motion);
-   #endif  
+  if(last_state != current_state)
+  {
+      // Timer1.detachInterrupt();
+       if(current_state == HIGH){
+            mqttBuffer[MQTT_MOTION_NO].Data = true;
+           }
+       else if(current_state == LOW){       
+            mqttBuffer[MQTT_MOTION_NO].Data = false;
+           } 
+       last_state = current_state;
+  } 
 }
 

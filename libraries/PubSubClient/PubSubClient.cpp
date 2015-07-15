@@ -280,7 +280,7 @@ boolean PubSubClient::publish(char* topic, uint8_t* payload, unsigned int plengt
    }
    return false;
 }
-
+/*
 boolean PubSubClient::publish_P(char* topic, uint8_t* PROGMEM payload, unsigned int plength, boolean retained) {
    uint8_t llen = 0;
    uint8_t digit;
@@ -324,7 +324,7 @@ boolean PubSubClient::publish_P(char* topic, uint8_t* PROGMEM payload, unsigned 
    lastOutActivity = millis();
    
    return rc == tlen + 4 + plength;
-}
+}*/
 
 boolean PubSubClient::write(uint8_t header, uint8_t* buf, uint16_t length) {
    uint8_t lenBuf[4];
