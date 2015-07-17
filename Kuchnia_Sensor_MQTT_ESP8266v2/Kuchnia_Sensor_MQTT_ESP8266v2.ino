@@ -51,7 +51,9 @@ void wifiCb(void* response)
 
 void mqttConnected(void* response)
 {
-  debugPort.println("Connected");
+  #ifdef DEBUG
+  debugPort.println("MQTT: Connected");
+  #endif
   mqtt.subscribe("1010"); //or mqtt.subscribe("topic"); /*with qos = 0*/
   mqtt.subscribe("1020");
 //  mqtt.subscribe("/topic/2");
@@ -73,7 +75,7 @@ void mqttData(void* response)
   String dataStr = res.popString();
 
   #ifdef DEBUG
-  debugPort.print("Received: topic=");
+  debugPort.print("MQTT: Received: topic=");
   debugPort.println(topicStr);
   debugPort.print("data=");
   debugPort.println(dataStr);
@@ -120,6 +122,7 @@ void setup() {
   digitalWrite(GASDIODAPIN, 0);
   pinMode(KEYPIN, OUTPUT);
   analogWrite(KEYPIN, 0);
+  mqttConfig();
   
   esp.enable();
   delay(500);
@@ -132,8 +135,7 @@ void setup() {
     debugPort.println("ARDUINO: fail to setup mqtt");
     while(1);
   }
-
-
+  
   debugPort.println("ARDUINO: setup mqtt lwt");
   mqtt.lwt("/lwt", "offline", 0, 0); //or mqtt.lwt("/lwt", "offline");
 
@@ -149,7 +151,6 @@ void setup() {
 
   esp.wifiConnect(ssid,password);
 
-
   debugPort.println("ARDUINO: system started");
   
   //Smooth dimming interrupt init
@@ -159,7 +160,6 @@ void setup() {
   debugPort.println("Timer 1 wlaczony!!!!!!");
   #endif
   
-  mqttConfig();
   // wdt_enable(WDTO_8S);
 }
 /////////////////////////////////////////////END SETUP/////////////////////////////////////////////////
@@ -176,7 +176,8 @@ void loop() {
   if(wifiConnected && millis() > 5000) 
   {
         mqttBuffer[MQTT_UPTIME_NO].Data = millis()/60000;
-           
+        if(mqttBuffer[MQTT_UPTIME_NO].Data < 0) mqttBuffer[MQTT_UPTIME_NO].Data = 1;
+        
         digitalWrite(MQTTDIODAPIN,HIGH);
         mqtt_status = true;
         
@@ -194,11 +195,16 @@ void loop() {
                debugPort.println(dataChar);
                #endif 
                lastPir = mqttBuffer[MQTT_MOTION_NO].Data;
+               
+               itoa(mqttBuffer[MQTT_PHOTO_NO].Data, dataChar, 10);
+               itoa(mqttBuffer[MQTT_PHOTO_NO].Topic, topicChar, 10);
+               mqtt.publish(topicChar, dataChar);
+               
                mainCounter = 1;
            }
     
         
-        if(!(mainCounter%2500)){
+        if(mqtt_run){
             #ifdef LOG
             debugPort.print("Main counter: ");
             debugPort.println(mainCounter);
@@ -209,13 +215,15 @@ void loop() {
             debugPort.println(mainCounter);
             #endif
             SendMqtt();
+            mqtt_run = false;
         }
         
-        if(!(mainCounter%10000)){
+        if(0){
             #ifdef DEBUG
             debugPort.println("Przerwanie Timer 1 - DHT11");
             #endif
             DHT11Pomiar(); 
+            dht_run = false;
         }
   }
   else
@@ -257,6 +265,8 @@ void TimerLoop(){
   DimmerSet(KEYPIN, &mqttBuffer[MQTT_DIMMER_NO].Data);
   
   if(!(loopCounter%100)) PirPomiar();
+  if(!(mainCounter%2500)) mqtt_run = true;
+  if(!(mainCounter%60500)) dht_run = true;
 }
 
 

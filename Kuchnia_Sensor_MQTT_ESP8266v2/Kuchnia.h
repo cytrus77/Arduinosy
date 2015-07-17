@@ -71,6 +71,8 @@ dht11 DHT11;
 
 int currentDimmer = 0;
 boolean mqtt_status = false;
+boolean mqtt_run = false;
+boolean dht_run = false;
 
 // Update these with values suitable for your network.
 char server[] = "192.168.0.142";
