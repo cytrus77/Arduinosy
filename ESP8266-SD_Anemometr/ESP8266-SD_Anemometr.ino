@@ -36,9 +36,13 @@ OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 File myFile;
 
-String GET_Anemo = "GET /update?key=EMMN6DL88IZYMMU4&field1=";
-String GET_Akku = "GET /update?key=EMMN6DL88IZYMMU4&field2=";
-String GET_Temp = "GET /update?key=EMMN6DL88IZYMMU4&field3=";
+String GET       = "GET /update?key=";
+String GET_Key   = "EMMN6DL88IZYMMU4";
+String GET_Anemo = "&field1=";
+String GET_Akku  = "&field2=";
+String GET_Temp  = "&field3=";
+
+/////////////////////////////////////////////START SETUP///////////////////////////////////////////////////
 
 void setup()
 {
@@ -57,6 +61,30 @@ void setup()
   // or the SD library functions will not work. 
    pinMode(10, OUTPUT);
    
+    //Smooth dimming interrupt init
+  Timer1.initialize(1000000);        // 1s period
+  Timer1.attachInterrupt(TimerLoop);
+}
+/////////////////////////////////////////////END SETUP/////////////////////////////////////////////////////
+
+/////////////////////////////////////////////START MAIN LOOP///////////////////////////////////////////////
+
+void loop(){
+  float temp;
+  float akkuVoltage;
+  float wind;
+  char buffer[10];
+  
+  akkuVoltage = 5.0*analogRead(AKKU_ADC_PIN)/1024.0;
+  updateValue(&GET_Akku,dtostrf(akkuVoltage, 4, 3, buffer));
+  
+  sensors.requestTemperatures();
+  temp = sensors.getTempCByIndex(0);
+  updateValue(&GET_Temp,dtostrf(akkuVoltage, 4, 1, buffer));
+}
+/////////////////////////////////////////////END MAIN LOOP/////////////////////////////////////////////////
+
+void TimerLoop(){
   if (!SD.begin(4)) {
     //Serial.println("initialization failed!");
     return;
@@ -74,47 +102,16 @@ void setup()
     // close the file:
     myFile.close();
     //Serial.println("done.");
-  } else {
+  } 
+  else 
+  {
     // if the file didn't open, print an error:
     //Serial.println("error opening test.txt");
   }
-  
-    //Smooth dimming interrupt init
-  Timer1.initialize(1000000);
-  Timer1.attachInterrupt(TimerLoop);
 }
+/////////////////////////////////////////////END/////////////////////////////////////////////////
 
-void loop(){
-  float tempC1;
-  char buffer[10];
-  float akkuVoltage;
-  
-  akkuVoltage = 5.0*analogRead(AKKU_ADC_PIN)/1024.0;
-  #ifdef DEBUG
-  Serial.println("Akku");
-  Serial.println(analogRead(AKKU_ADC_PIN));
-  Serial.println(akkuVoltage);
-  #endif
-  updateAkku(dtostrf(akkuVoltage, 4, 3, buffer));
-  delay(30000);
-
-  sensors.requestTemperatures();
-  tempC1 = sensors.getTempCByIndex(0);
-  #ifdef DEBUG
-  Serial.println("Temp1");
-  Serial.println(tempC1);
-  #endif
-  String tempCstr = dtostrf(tempC1, 4, 1, buffer);
-  updateTemp(tempCstr);
-  delay(30000);
-}
-/////////////////////////////////////////////END MAIN LOOP/////////////////////////////////////////////////
-
-void TimerLoop(){
-
-}
-
-void updateTemp(String tenmpF){
+void updateValue(String* field, String value){
   String cmd = "AT+CIPSTART=\"TCP\",\"";
   cmd += IP;
   cmd += "\",80";
@@ -123,8 +120,10 @@ void updateTemp(String tenmpF){
   if(Serial.find("Error")){
     return;
   }
-  cmd = GET_Temp;
-  cmd += tenmpF;
+  cmd = GET;
+  cmd += GET_Key;
+  cmd += *field;
+  cmd += value;
   cmd += "\r\n";
   Serial.print("AT+CIPSEND=");
   Serial.println(cmd.length());
@@ -134,27 +133,7 @@ void updateTemp(String tenmpF){
     Serial.println("AT+CIPCLOSE");
   }
 }
- 
-void updateAkku(String tenmpF){
-  String cmd = "AT+CIPSTART=\"TCP\",\"";
-  cmd += IP;
-  cmd += "\",80";
-  Serial.println(cmd);
-  delay(2000);
-  if(Serial.find("Error")){
-    return;
-  }
-  cmd = GET_Akku;
-  cmd += tenmpF;
-  cmd += "\r\n";
-  Serial.print("AT+CIPSEND=");
-  Serial.println(cmd.length());
-  if(Serial.find(">")){
-    Serial.print(cmd);
-  }else{
-    Serial.println("AT+CIPCLOSE");
-  }
-}
+/////////////////////////////////////////////END/////////////////////////////////////////////////
  
 boolean connectWiFi(){
   Serial.println("AT+CWMODE=1");
