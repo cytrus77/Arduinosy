@@ -1,6 +1,8 @@
 #ifndef MQTTCONFIG_H
 #define MQTTCONFIG_H
 
+#include "Utilities.h";
+
 void wifiCb(void* response)
 {
   uint32_t status;
@@ -47,19 +49,19 @@ void mqttData(void* response)
   topic = atoi(topicStr.c_str());
   data = atoi(dataStr.c_str());
 
-  switch(topic) // do przerobienia
+  switch(topic)
   {
- /*   case MQTT_RELAY:
-    {
-      mqttBuffer[MQTT_RELAY_NO].Data  = data;
-      break;
-    }
     case MQTT_DIMMER:
-    {  
-      mqttBuffer[MQTT_DIMMER_NO].Data = data;
+    {
+      ledDimmer.setValue(data);
       break;
     }
-    default: */
+    case MQTT_PHOTO_TRIGGER:
+    {
+      ledDimmer.setTrigger(data);
+      break;
+    }
+    default: 
     break;
   }
 }

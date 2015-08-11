@@ -56,55 +56,29 @@ void setup() {
 
 /////////////////////////////////////////////START MAIN LOOP/////////////////////////////////////////////////
 void loop() {  
-  int counter;
+  static int counter = 0;
   esp.process();
-  counter = (sensor::m_sensorCounter+1)%sensor::m_sensorCounter;
+  counter = (counter+1)%sensor::m_sensorCounter;
   sensor::sensorPtr[counter]->getValue();
-
 }
 /////////////////////////////////////////////END MAIN LOOP/////////////////////////////////////////////////
 
 
 void TimerLoop()
 {
-
-}
-
-
-void DHT11Pomiar(){
-  switch (DHT11.read(1))  //wpisac nr pin-u
+  static int loopCounter = 0;
+  static int pirValue = 0;
+  loopCounter++;
+  if(!(loopCounter%2500))
   {
-    case DHTLIB_OK:              
-                #ifdef DEBUG
-                debugPort.println("\n");
-                debugPort.print("DHT 11 Read sensor: ");
-                #endif
-                
-                if((int)DHT11.humidity != 0 && (int)DHT11.temperature != 0)
-                {
-                  //  mqttBuffer[MQTT_HUMI_NO].Data = (int)DHT11.humidity;
-                  //  mqttBuffer[MQTT_TEMP_NO].Data = (int)DHT11.temperature;
-                }
-                
-                #ifdef DEBUG
-                debugPort.print("Humidity (%): ");
-                debugPort.println((float)DHT11.humidity, 2);
-              
-                debugPort.print("Temperature (Â°C): ");
-                debugPort.println((float)DHT11.temperature, 2);
-                #endif
-
-		//debugPort.println("OK"); 
-		break;
-    case DHTLIB_ERROR_CHECKSUM: 
-		//debugPort.println("Checksum error"); 
-		break;
-    case DHTLIB_ERROR_TIMEOUT: 
-		//debugPort.println("Time out error"); 
-		break;
-    default: 
-		//debugPort.println("Unknown error"); 
-		break;
+      static int mqttCounter = 0;
+      mqttCounter = (mqttCounter+1)%sensor::m_sensorCounter;
+      sensor::sensorPtr[mqttCounter]->sendMqtt();
   }
+  if(pirValue != motionSensor.m_value)
+  {
+      ledDimmer.m_setValue = 100;
+  }
+  ledDimmer.setDimmer();
 }
 

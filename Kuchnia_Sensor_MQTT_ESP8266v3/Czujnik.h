@@ -10,10 +10,10 @@ class sensor
 public:
 	static int m_sensorCounter;
         static sensor *sensorPtr[6];
+        int     m_value;
         
 private:	
 	int     m_mqttTopic;
-	int     m_value;
 	int     m_pin;
 
 public:	
