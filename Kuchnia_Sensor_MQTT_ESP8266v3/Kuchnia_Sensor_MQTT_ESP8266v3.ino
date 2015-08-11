@@ -17,13 +17,16 @@
 void setup() {
   Serial.begin(19200);
   debugPort.begin(19200);
-  
+  debugPort.println("startuje setup");
   esp.enable();
   delay(500);
+  debugPort.println("startuje 1");
   esp.reset();
   delay(500);
+  debugPort.println("startuje 2");
   while(!esp.ready());
-
+  debugPort.println("startuje 3");
+  debugPort.println("ARDUINO: setup mqtt client");
   if(!mqtt.begin("DVES_duino", "admin", "Isb_C4OGD4c3", 120, 1)) {
     debugPort.println("ARDUINO: fail to setup mqtt");
     while(1);
@@ -63,11 +66,9 @@ void loop() {
 }
 /////////////////////////////////////////////END MAIN LOOP/////////////////////////////////////////////////
 
-
 void TimerLoop()
 {
   static int loopCounter = 0;
-  static int pirValue = 0;
   loopCounter++;
   if(!(loopCounter%2500))
   {
@@ -75,10 +76,24 @@ void TimerLoop()
       mqttCounter = (mqttCounter+1)%sensor::m_sensorCounter;
       sensor::sensorPtr[mqttCounter]->sendMqtt();
   }
+  
+  static int pirValue = 0;
+  static dimmer ledDimmer(MQTT_DIMMER, 6, MQTT_DIMMER_TIMER, MQTT_PHOTO_TRIGGER); // hack 4 to quick mqtt subscribe
+
   if(pirValue != motionSensor.m_value)
   {
-      ledDimmer.m_setValue = 100;
+    if(motionSensor.m_value)
+    {
+      ledDimmer.setValue(100);
+      ledDimmer.resetTimer();
+      pirValue = motionSensor.m_value;
+    }
+    else
+    {
+      pirValue = motionSensor.m_value;
+    }
   }
   ledDimmer.setDimmer();
 }
+
 

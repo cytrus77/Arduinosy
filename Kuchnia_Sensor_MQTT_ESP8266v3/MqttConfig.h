@@ -53,12 +53,12 @@ void mqttData(void* response)
   {
     case MQTT_DIMMER:
     {
-      ledDimmer.setValue(data);
+   //   ledDimmer.setValue(data);
       break;
     }
     case MQTT_PHOTO_TRIGGER:
     {
-      ledDimmer.setTrigger(data);
+   //   ledDimmer.setTrigger(data);
       break;
     }
     default: 

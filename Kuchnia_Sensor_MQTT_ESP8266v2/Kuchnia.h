@@ -16,6 +16,7 @@
 #define MQTT_RELAY_NO    7
 #define MQTT_DIMMER      1020
 #define MQTT_DIMMER_NO   8
+#define MQTT_PHOTO_TRIGGER 1021
 
 //Published MQTT topics
 #define MQTT_UPTIME     1000

@@ -7,7 +7,8 @@
 
 #define MQTT_UPTIME        1000
 #define MQTT_DIMMER        1020
-#define MQTT_PHOTO_TRIGGER 1021
+#define MQTT_PHOTO_TRIGGER 1022
+#define MQTT_DIMMER_TIMER  1021
 #define MQTT_MOTION        1040
 #define MQTT_PHOTO         1070
 #define MQTT_GAS           1091
@@ -28,8 +29,6 @@ sensor gasSensor(MQTT_GAS, A5);
 sensor floodSensor(MQTT_FLOOD, A3);
 sensor photoSensor(MQTT_PHOTO, A4);
 sensor motionSensor(MQTT_MOTION, 9);
-
-dimmer ledDimmer(MQTT_DIMMER, 6, MQTT_PHOTO_TRIGGER);
 
 // Update these with values suitable for your network.
 char server[] = "192.168.0.142";
