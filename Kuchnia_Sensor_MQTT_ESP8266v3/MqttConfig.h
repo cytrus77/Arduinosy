@@ -11,7 +11,9 @@ void wifiCb(void* response)
   if(res.getArgc() == 1) {
     res.popArgs((uint8_t*)&status, 4);
     if(status == STATION_GOT_IP) {
+      #ifdef DEBUG
       debugPort.println("WIFI CONNECTED");
+      #endif
       mqtt.connect(server, 1883, false);
     } else {
       mqtt.disconnect();
@@ -53,12 +55,17 @@ void mqttData(void* response)
   {
     case MQTT_DIMMER:
     {
-   //   ledDimmer.setValue(data);
+      ledDimmer.setValue(data);
       break;
     }
     case MQTT_PHOTO_TRIGGER:
     {
-   //   ledDimmer.setTrigger(data);
+      ledDimmer.setTrigger(data);
+      break;
+    }
+    case MQTT_DIMMER_TIMER:
+    {
+      ledDimmer.setTimer(data);
       break;
     }
     default: 

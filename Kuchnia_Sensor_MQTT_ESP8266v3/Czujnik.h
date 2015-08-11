@@ -11,22 +11,24 @@ public:
 	static int    m_sensorCounter;
         static sensor *sensorPtr[6];
         int           m_value;
+        bool          m_invertedScale;
         
 private:	
 	int     m_mqttTopic;
 	int     m_pin;
 
 public:	
-        sensor(int topic, int pin);
+        sensor(int topic, int pin, bool invertedScale);
 	void    sendMqtt();
 	void    getValue();
 };
 
-sensor::sensor(int topic, int pin)
+sensor::sensor(int topic, int pin, bool invertedScale)
 {
 	m_sensorCounter++;
 	m_mqttTopic = topic;
 	m_pin = pin;
+        m_invertedScale = invertedScale;
 	sensorPtr[m_sensorCounter-1] = this;
 	pinMode(m_pin, INPUT);
 }
@@ -46,7 +48,8 @@ void sensor::getValue()
     if(m_pin >= A0)
     {
         m_value = analogRead(m_pin);
-	m_value = map(m_value, 0, 1024, 100, 0);
+        if(m_invertedScale) m_value = map(m_value, 0, 1024, 100, 0);
+        else                m_value = map(m_value, 0, 1024, 0, 100);
     }
     else m_value = digitalRead(m_pin);
 }

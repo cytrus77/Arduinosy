@@ -17,22 +17,26 @@
 void setup() {
   Serial.begin(19200);
   debugPort.begin(19200);
-  debugPort.println("startuje setup");
+
   esp.enable();
   delay(500);
-  debugPort.println("startuje 1");
   esp.reset();
   delay(500);
-  debugPort.println("startuje 2");
   while(!esp.ready());
-  debugPort.println("startuje 3");
+
+#ifdef DEBUG
   debugPort.println("ARDUINO: setup mqtt client");
+#endif
   if(!mqtt.begin("DVES_duino", "admin", "Isb_C4OGD4c3", 120, 1)) {
+    #ifdef DEBUG
     debugPort.println("ARDUINO: fail to setup mqtt");
+    #endif
     while(1);
   }
   
+  #ifdef DEBUG
   debugPort.println("ARDUINO: setup mqtt lwt");
+  #endif
   mqtt.lwt("/lwt", "offline", 0, 0); //or mqtt.lwt("/lwt", "offline");
 
 /*setup mqtt events */
@@ -42,18 +46,19 @@ void setup() {
   mqtt.dataCb.attach(&mqttData);
 
   /*setup wifi*/
+  #ifdef DEBUG
   debugPort.println("ARDUINO: setup wifi");
+  #endif
   esp.wifiCb.attach(&wifiCb);
   esp.wifiConnect(ssid,password);
 
+  #ifdef DEBUG
   debugPort.println("ARDUINO: system started");
+  #endif
   
   //Smooth dimming interrupt init
   Timer1.initialize(2000);
   Timer1.attachInterrupt(TimerLoop);
-  #ifdef DEBUG
-  debugPort.println("Timer 1 wlaczony!!!!!!");
-  #endif
 }
 /////////////////////////////////////////////END SETUP/////////////////////////////////////////////////
 
@@ -63,6 +68,8 @@ void loop() {
   esp.process();
   counter = (counter+1)%sensor::m_sensorCounter;
   sensor::sensorPtr[counter]->getValue();
+  
+  sendUptime();
 }
 /////////////////////////////////////////////END MAIN LOOP/////////////////////////////////////////////////
 
@@ -70,22 +77,21 @@ void TimerLoop()
 {
   static int loopCounter = 0;
   loopCounter++;
-  if(!(loopCounter%2500))
+  if(!(loopCounter%2500) && !mqttBusy)
   {
+      mqttBusy = 1;
       static int mqttCounter = 0;
       mqttCounter = (mqttCounter+1)%sensor::m_sensorCounter;
       sensor::sensorPtr[mqttCounter]->sendMqtt();
+      mqttBusy = 0;
   }
   
   static int pirValue = 0;
-  static dimmer ledDimmer(MQTT_DIMMER, 6, MQTT_DIMMER_TIMER, MQTT_PHOTO_TRIGGER); // hack 4 to quick mqtt subscribe
-
-  if(pirValue != motionSensor.m_value)
+  if(pirValue != motionSensor.m_value && ledDimmer.m_trigger > photoSensor.m_value)
   {
     if(motionSensor.m_value)
     {
       ledDimmer.setValue(100);
-      ledDimmer.resetTimer();
       pirValue = motionSensor.m_value;
     }
     else
