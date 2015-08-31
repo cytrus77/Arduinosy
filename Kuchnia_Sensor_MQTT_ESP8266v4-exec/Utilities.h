@@ -1,14 +1,6 @@
 #ifndef UTILITIES_H
 #define UTILITIES_H
 
-#include <mqtt.h>
-
-#define TRIGERVALUE  50   // default value for photo trigger [%]
-#define TIMERVALUE  120   // default value of timer [sec]
-
-extern MQTT mqtt;//(&esp);
-extern bool mqttBusy;
-
 class dimmer
 {
 private:
@@ -20,7 +12,6 @@ private:
 	int m_mqttTopic;
         int m_mqttTrigger;
         int m_mqttTimer;
-        bool m_subscribeFlag;
 
 public:
         int m_trigger;
@@ -30,11 +21,11 @@ public:
         void setValue(int value);
         void setTimer(int timer);
         void resetTimer();
+        void registerSubscrib();
 };
 
 dimmer::dimmer(int topic, int pin, int topicTimer, int topicTrigger)
 {
-        m_subscribeFlag = 1;
 	m_currentValue = 0;
 	m_setValue = 0;
         m_trigger = TRIGERVALUE;
@@ -49,18 +40,6 @@ dimmer::dimmer(int topic, int pin, int topicTimer, int topicTrigger)
 
 void dimmer::setDimmer()
 {
-        if(m_subscribeFlag)
-        {
-         	char topicChar[5];
-                itoa(m_mqttTopic, topicChar, 10);
-	        mqtt.subscribe(topicChar);
-                itoa(m_mqttTrigger, topicChar, 10);
-        	mqtt.subscribe(topicChar);
-                itoa(m_mqttTimer, topicChar, 10);
-        	mqtt.subscribe(topicChar); 
-                m_subscribeFlag = 0;
-        }
-
         if( (millis() - m_startTimer)/1000 > m_timer)
         {
                 m_setValue = 0;
@@ -68,19 +47,17 @@ void dimmer::setDimmer()
 
     	if(m_currentValue != m_setValue)
 	{
-                int tempValue = map(m_setValue, 0, 100, 0, 255);
-		if      (m_currentValue < tempValue) ++m_currentValue;
-		else if (m_currentValue > tempValue) --m_currentValue;
+		if      (m_currentValue < m_setValue) ++m_currentValue;
+		else if (m_currentValue > m_setValue) --m_currentValue;
                 analogWrite(m_pin, m_currentValue*m_currentValue/255);
-                m_currentValue = map(m_currentValue, 0, 255, 0, 100);
 	}
 }
 
 void dimmer::setValue(int value)
 {
-      if(value >= 0 && value <= 100) m_setValue = value;
-      else if (value < 0)           m_setValue = 0;
-      else if (value > 100)         m_setValue = 100;
+      if(value >= 0 && value <= 100) m_setValue = map(value, 0, 100, 0, 255);
+      else if (value < 0)            m_setValue = 0;
+      else if (value > 100)          m_setValue = 255;
       resetTimer();
 }
 
@@ -103,21 +80,11 @@ void dimmer::resetTimer()
       m_startTimer = millis();
 }
 
+
 void sendUptime()
 {
-      static unsigned long uptime;
-      unsigned long newUptime;
-      
-      newUptime = millis()/60000;
-      if(uptime != newUptime && !mqttBusy)
-      {
-          mqttBusy = 1;
-          char dataChar[8];
-          itoa(newUptime, dataChar, 10);
-          mqtt.publish("1000", dataChar);
-          uptime = newUptime;
-          mqttBusy = 0;
-      }
+      unsigned long uptime;
+      uptime = millis()/60000;
 }
 
 #endif

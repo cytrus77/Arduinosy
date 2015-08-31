@@ -1,7 +1,7 @@
 #ifndef MQTTCONFIG_H
 #define MQTTCONFIG_H
 
-#include "Utilities.h";
+//#define DEBUG 1
 
 void wifiCb(void* response)
 {
@@ -26,6 +26,7 @@ void mqttConnected(void* response)
   #ifdef DEBUG
   debugPort.println("MQTT: Connected");
   #endif
+  ledDimmer.registerSubscrib();
 }
 
 void mqttDisconnected(void* response)
@@ -42,6 +43,7 @@ void mqttData(void* response)
   String dataStr = res.popString();
 
   #ifdef DEBUG
+  debugPort.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
   debugPort.print("MQTT: Received: topic=");
   debugPort.println(topicStr);
   debugPort.print("data=");
