@@ -1,6 +1,9 @@
 #ifndef CZUJNIK_H
 #define CZUJNIK_H
 
+extern int sendBuffer[16][2];
+extern char sendIndex;
+extern char getIndex;
 
 class sensor
 {
@@ -16,8 +19,11 @@ private:
 
 public:	
         sensor(int topic, int pin, bool invertedScale);
-	void    getValue();
+	void    doMeasure();
 };
+
+sensor *sensor::sensorPtr[6];
+int sensor::m_sensorCounter = 0;
 
 sensor::sensor(int topic, int pin, bool invertedScale)
 {
@@ -29,8 +35,10 @@ sensor::sensor(int topic, int pin, bool invertedScale)
 	pinMode(m_pin, INPUT);
 }
 
-void sensor::getValue()
+void sensor::doMeasure()
 {
+    int old_value = m_value;
+    
     if(m_pin >= A0)
     {
         int tempValue = analogRead(m_pin);
@@ -38,6 +46,19 @@ void sensor::getValue()
         else                m_value = map(tempValue, 0, 1024, 0, 100);
     }
     else m_value = digitalRead(m_pin);
+    #ifdef DEBUG
+    Serial.println("sensor::doMeasure()");
+    #endif
+    if(old_value != m_value)
+    {
+        #ifdef DEBUG
+        Serial.print("m_mqttTopic z doMeasure() = ");
+        Serial.println(m_mqttTopic);
+        #endif
+        sendBuffer[getIndex][0] = m_mqttTopic;
+        sendBuffer[getIndex][1] = m_value;
+        getIndex++;
+    }
 }
 
 #endif
