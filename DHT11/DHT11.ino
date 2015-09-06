@@ -61,7 +61,7 @@ double dewPointFast(double celsius, double humidity)
 
 dht11 DHT11;
 
-#define DHT11PIN 2
+#define DHT11PIN 7
 
 void setup()
 {
@@ -72,13 +72,17 @@ void setup()
   Serial.println();
 }
 
+unsigned long time_start = 0;
+unsigned long time_stop = 0;
+
 void loop()
 {
   Serial.println("\n");
-
+  time_start = millis();
   int chk = DHT11.read(DHT11PIN);
-
+  time_stop = millis();
   Serial.print("Read sensor: ");
+  
   switch (chk)
   {
     case DHTLIB_OK: 
@@ -95,6 +99,9 @@ void loop()
 		break;
   }
 
+  Serial.print("DHT11 - time: ");
+  Serial.println(time_stop - time_start);
+  
   Serial.print("Humidity (%): ");
   Serial.println((float)DHT11.humidity, 2);
 

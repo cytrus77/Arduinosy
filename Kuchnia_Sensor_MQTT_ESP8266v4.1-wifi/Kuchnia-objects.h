@@ -17,6 +17,7 @@ int i2cPeriod  = I2CPERIOD*1000;
 int msCounterMqtt  = 0;
 int msCounterI2C   = 0;
 int mqttMode = MQTTCONFIG;
+bool mqttStatus = false;
 
 // Update these with values suitable for your network.
 char server[] = "192.168.0.142";

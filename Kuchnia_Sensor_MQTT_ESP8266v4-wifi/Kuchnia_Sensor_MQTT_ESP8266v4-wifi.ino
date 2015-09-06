@@ -68,7 +68,7 @@ void setup() {
 void loop() {  
   esp.process();
   wdt_reset();
-  if(mqttMode == MQTTCONFIG)
+/*  if(mqttMode == MQTTCONFIG)
   {
       if(msCounterI2C > i2cPeriod)
       { 
@@ -140,7 +140,7 @@ void loop() {
         #endif
      }
      
-  }
+  }*/
 }
 /////////////////////////////////////////////END MAIN LOOP/////////////////////////////////////////////////
 

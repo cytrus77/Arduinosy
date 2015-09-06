@@ -13,6 +13,7 @@ private:
 	int  m_pin;
 	bool m_invertedScale;
 	bool m_inputType;
+        unsigned long m_timer;
 
 public:
 	sensor(int topic, int pin, bool invertedScale, bool inputType);

@@ -8,7 +8,6 @@
 #include "Kuchnia-objects.h"
 #include "Czujnik.h"
 #include "Dimmer.h"
-#include "Utilities.h"
 
 
 //Sensor Vars
@@ -52,10 +51,6 @@ void loop() {
       #endif
       loopCounter = 0;
   }
-
-//  #ifdef DEBUG
-//  debugPort.println("!!!!!!!!!!!!!!!!MAIN LOOP!!!!!!!!!!!!!!!!!!!");
-//  #endif
 }
 /////////////////////////////////////////////END MAIN LOOP/////////////////////////////////////////////////
 

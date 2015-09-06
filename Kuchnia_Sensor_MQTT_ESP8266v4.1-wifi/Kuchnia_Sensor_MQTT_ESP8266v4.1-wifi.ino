@@ -66,8 +66,8 @@ void setup() {
 void loop() {  
   esp.process();
   wdt_reset();
-  sendUptime();
-  if(mqttMode == MQTTCONFIG)
+
+  if(mqttMode == MQTTCONFIG && mqttStatus)
   {
       if(msCounterI2C > i2cPeriod)
       { 
@@ -84,7 +84,7 @@ void loop() {
           {
             mqttMode = MQTTNORMAL;
           }
-          else
+          else if (*ptr >= 1000 && *ptr <= 10000)
           {
              char topicChar[5];
              itoa(*ptr, topicChar, 10);
@@ -97,10 +97,11 @@ void loop() {
         }
       }
   }
-  else if(mqttMode == MQTTNORMAL)
+  else if(mqttMode == MQTTNORMAL && mqttStatus)
   {
       if(msCounterI2C > i2cPeriod)
       { 
+         sendUptime();
          #ifdef DEBUG
          debugPort.println("msCounterI2C > i2cPeriod - mqttMode == MQTTNORMAL");
          #endif
@@ -169,7 +170,7 @@ void sendUptime()
       static unsigned long uptime = 0;  
       int old_value = uptime;
       uptime = millis()/60000;
-      if(old_value != uptime)
+      if(old_value != uptime && mqttStatus)
       {
           char topicChar[5];
           char dataChar[8];

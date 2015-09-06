@@ -50,17 +50,21 @@ void mqttConnected(void* response)
   #ifdef DEBUG
   debugPort.println("MQTT: Connected");
   #endif
+  mqttStatus = true;
     {
     char topicChar[5];
     itoa(MQTT_CONFIG_START, topicChar, 10);
     mqtt.subscribe(topicChar);
-  }
+    }
   send2Ints (MQTT_CONFIG_START, 1, I2C_EXEC_ADDR);
 }
 
 void mqttDisconnected(void* response)
 {
-
+   #ifdef DEBUG
+   debugPort.println("MQTT: Disconeccted");
+   #endif
+   mqttStatus = false;
 }
 
 void mqttData(void* response)

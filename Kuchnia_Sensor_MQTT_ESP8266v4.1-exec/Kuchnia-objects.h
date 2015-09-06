@@ -12,3 +12,4 @@ int measurePeriod = MEASUREPERIOD/2;
 int pirLastValue = 0;
 
 #endif
+
