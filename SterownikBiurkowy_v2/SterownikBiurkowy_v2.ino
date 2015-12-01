@@ -1,7 +1,7 @@
 #include <LiquidCrystal.h>
 //From bildr article: http://bildr.org/2012/08/rotary-encoder-arduino/
 
-
+#define DEBUG 1
 /*
   The circuit:
  * LCD RS pin to digital pin 9
@@ -64,9 +64,9 @@ void setup() {
   Serial.begin (9600);
 
   // set up the LCD's number of columns and rows:
-  lcd.begin(16, 2);
+//  lcd.begin(16, 2);
   // Print a message to the LCD.
-  lcd.print("Wystartowalem"); 
+//  lcd.print("Wystartowalem"); 
 
   pinMode(encoderPin1, INPUT);
   pinMode(encoderPin2, INPUT);
@@ -101,11 +101,12 @@ void loop() {
   {
     //button is being pushed
     if(ledSwitch > 0.01){
-  //   ledSwitch = 0;
+      ledSwitch = 0;
     }
     else
     {
       ledSwitch = 1;
+      value2[1] = 70;
       time = millis();
     }
     #ifdef DEBUG
