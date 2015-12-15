@@ -1,49 +1,87 @@
-#define SerialTxControl 10   //RS485 управляющий контакт на arduino pin 10
-#define RS485Transmit    HIGH
-#define RS485Receive     LOW  
+#include <SoftwareSerial.h>
 
-char buffer[100];
+#define SerialTransmit      12   //RS485 управляющий контакт на arduino pin 10
+#define SerialReceive       11
+#define RS485rxPin          2
+#define RS485txPin          3
+#define RS485TransmitOn     HIGH
+#define RS485TransmitOff    LOW  
+#define RS485ReceiveOn      LOW
+#define RS485ReceiveOff     HIGH  
 
-void setup(void) {
+SoftwareSerial mySerial(RS485rxPin, RS485txPin); // RX, TX
+int buffer[10];
+int bufferIt = 0;
+
+void setup(void) 
+{
   Serial.begin(9600, SERIAL_8N1);
-   pinMode(SerialTxControl, OUTPUT);  
-   digitalWrite(SerialTxControl, RS485Transmit); 
-  // Serial.println("TEST");  
+  mySerial.begin(9600);
+  pinMode(SerialTransmit, OUTPUT);  
+  pinMode(SerialReceive, OUTPUT);
+  pinMode(RS485rxPin, INPUT);  
+  pinMode(RS485txPin, OUTPUT); 
+  
+  digitalWrite(SerialTransmit, RS485TransmitOff); 
+  digitalWrite(SerialReceive, RS485ReceiveOff); 
+  Serial.println("START");  
   delay(100); 
-  digitalWrite(SerialTxControl, RS485Receive);   
 }
- 
-void loop(void) {
-   digitalWrite(SerialTxControl, RS485Transmit); 
-   Serial.write(0x02);
-   Serial.write(0x03);
-   Serial.write(0x00);
-   Serial.write(0x00);
-   Serial.write(0x00);
-   Serial.write(0x01);
-   Serial.write(0x84);
-   Serial.write(0x39);
-// Serial.println("");
-   
-//   Serial.write(0x020300);
-//   Serial.write(0x000001);
-//   Serial.write(0x8439);
-  
-  digitalWrite(SerialTxControl, RS485Receive);  // читаем данные с порта
- int i=0; 
- delay(100);
- //if(Serial.available())
- {delay(100);
- 
- while( i< 200)//Serial.available() && i< 99) 
- { buffer[i++] = Serial.read();} buffer[i++]='\0';}
-  if(i>0)
+
+
+void loop(void) 
+{
+  if (doTheJob())
   {
-  Serial.println(buffer); // Выводим что приняли с других устройств
+    Serial.println("Pomiar");
+    digitalWrite(SerialTransmit, RS485TransmitOn); 
+    digitalWrite(SerialReceive, RS485ReceiveOff); 
+    mySerial.write((uint8_t)0x02);
+    mySerial.write((uint8_t)0x03);
+    mySerial.write((uint8_t)0x00);
+    mySerial.write((uint8_t)0x00); 
+    mySerial.write((uint8_t)0x00);
+    mySerial.write((uint8_t)0x01);
+    mySerial.write((uint8_t)0x84);
+    mySerial.write((uint8_t)0x39);
+    bufferIt = 0;
   }
+  else 
+  {
+    digitalWrite(SerialTransmit, RS485TransmitOff); 
+    digitalWrite(SerialReceive, RS485ReceiveOn); 
+    if(mySerial.available())
+    {
+      while( mySerial.available()) 
+      {
+        buffer[bufferIt] = mySerial.read();
+        Serial.println(buffer[bufferIt]);
+        ++bufferIt;
+      }
+      if (bufferIt >= 7)
+      {
+        int windSpeed = (buffer[3] * 0xFF + buffer[4]);
+        Serial.print("Wind speed = ");
+        Serial.println(windSpeed);
+      }
+    }
+  }
+}
+
+bool doTheJob()
+{
+  bool result = false;
+  const int period = 1000;  //in ms - 1s
+  static long lastMillis = 0;
+  long currentMillis = millis();
   
-  delay(3000);
- 
+  if (currentMillis - lastMillis > period)
+  {
+    lastMillis = currentMillis;
+    result = true;
+  } 
+  
+  return result;
 }
 
 
