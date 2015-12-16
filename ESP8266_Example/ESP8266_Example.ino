@@ -24,17 +24,40 @@
 #define PASS "limonkowy"
 #define IP "184.106.153.149" // thingspeak.com
 
+struct SReadyToSendMap
+{
+  int anemometer  :1;
+  int akku        :1;
+  int temperature :1;
+  int             :13;
+  
+    SReadyToSendMap()
+    {
+      memset(this, 0, sizeof(SReadyToSendMap));
+    }
+    
+    bool operator != (SReadyToSendMap const & other) const
+    {
+        return *((u16*)(this)) != *((u16*)(&other));
+    }
+}
+typedef SReadyToSendMap SReadyToSendMap;
+
+
 OneWire           oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 SoftwareSerial    mySerial(RS485rxPin, RS485txPin); // RX, TX
 
-String GET_Temp = "GET /update?key=EMMN6DL88IZYMMU4&field1=";
-String GET_Wind = "GET /update?key=EMMN6DL88IZYMMU4&field3=";
-String GET_Akku = "GET /update?key=EMMN6DL88IZYMMU4&field8=";
+String GET_cmd  = "GET /update?key=EMMN6DL88IZYMMU4&"
+String GET_Temp = "field1=";
+String GET_Wind = "field3=";
+String GET_Akku = "field8=";
 
 char buffer[10];
-int windBuffer[10];
-int windBufferIt = 0;
+int windRS485Buffer[10];
+int windRS485BufferIt = 0;
+float windBuffer[16];
+int windBufferCounter = 0;
 
 static float tempC1      = 0;
 static float akkuVoltage = 0;
@@ -44,10 +67,12 @@ static bool doAnemometer  = true;
 static bool doAkkuVoltage = true;
 static bool doTemperature = true;
 
+SReadyToSendMap readyToSendMap;
+
 // all period in milisecond
-const long anemometerPeriod  = 10000;
-const long akkuVoltagePeriod = 66000;
-const long temperaturePeriod = 300000;
+const long anemometerPeriod  = 1000;
+const long akkuVoltagePeriod = 60000;
+const long temperaturePeriod = 60000;
 
 //----------Setup----------------------------------------------
 void setup()
@@ -81,7 +106,7 @@ void loop(){
     Serial.println(analogRead(AKKU_ADC));
     Serial.println(akkuVoltage);
     #endif
-    sendThigsSpeakMsg(GET_Akku, dtostrf(akkuVoltage, 4, 2, buffer));
+    readyToSendMap.akku = true;
     doAkkuVoltage = false;
   }
 
@@ -93,24 +118,28 @@ void loop(){
     Serial.println("Temp1");
     Serial.println(tempC1);
     #endif
-    sendThigsSpeakMsg(GET_Temp, dtostrf(tempC1, 4, 1, buffer));
+    readyToSendMap.temperature = true;
     doTemperature = false;
   }
   
   //Anemometr section
   if (doAnemometer)
   {
-    sendRequest();
+    sendAnemometerRequest();
     doAnemometer = false;
   }
   else
     getWindValue(windSpeed);
-  
+
+  //send data to thingspeak
+  SReadyToSendMap zero;
+  if (readyToSendMap != zero)
+    sendThigsSpeakMsg(readyToSendMap);
 }
 
 
 //-------------------------------------------------------------------------------
-void sendThigsSpeakMsg(String getField, String value)
+void sendThigsSpeakMsg(SReadyToSendMap &readyToSendMap)
 {
   String cmd = "AT+CIPSTART=\"TCP\",\"";
   cmd += IP;
@@ -120,8 +149,36 @@ void sendThigsSpeakMsg(String getField, String value)
   if(Serial.find("Error")){
     return;
   }
-  cmd = getField;
-  cmd += value;
+  cmd = GET_cmd;
+  bool comma = false;
+  if (readyToSendMap.anemometer)
+  {
+    cmd += GET_Wind;
+    cmd += windSpeed;
+    readyToSendMap.anemometer = 0;
+    comma = true;
+  }
+  if (readyToSendMap.akku)
+  {
+    if (comma)
+    {
+      cmd += ",";
+    }
+    cmd += GET_Akku;
+    cmd += akkuVoltage;
+    readyToSendMap.akku = 0;
+    comma = true;
+  }
+  if (readyToSendMap.temperature)
+  {
+    if (comma)
+    {
+      cmd += ",";
+    }
+    cmd += GET_Temp;
+    cmd += tempC1;
+    readyToSendMap.temperature = 0;
+  }
   cmd += "\r\n";
   Serial.print("AT+CIPSEND=");
   Serial.println(cmd.length());
@@ -153,7 +210,7 @@ boolean connectWiFi(){
   }
 }
 
-void sendRequest()
+void sendAnemometerRequest()
 {
     digitalWrite(SerialTransmit, RS485TransmitOn); 
     digitalWrite(SerialReceive, RS485ReceiveOff); 
@@ -176,25 +233,33 @@ void getWindValue(float &windSpeed)
     {
       while( mySerial.available()) 
       {
-        windBuffer[windBufferIt] = mySerial.read();
+        windRS485Buffer[windRS485BufferIt] = mySerial.read();
         #ifdef DEBUF
         Serial.print("windBuffer = ");
-        Serial.println(buffer[windBufferIt]);
+        Serial.println(windRS485Buffer[windRS485BufferIt]);
         #endif
-        ++windBufferIt;
+        ++windRS485BufferIt;
       }
       if (windBufferIt >= 7)
       {
-        windSpeed = (float)(windBuffer[3] * 0xFF + windBuffer[4])/10;
+        windBuffer[windBufferCounter] = (float)(windRS485Buffer[3] * 0xFF + windRS485Buffer[4])/10;
+        windBufferCounter = (++windBufferCounter)%16;
+        
+        float sum = 0;
+        for (int i=0; i<16; ++i)
+        {
+          sum += windBuffer[i];
+        }
+        windSpeed = sum/16;
+        
+        readyToSendMap.anemometer = true;
         #ifdef DEBUG
         Serial.print("Wind speed = ");
         Serial.println(windSpeed);
         #endif
-        sendThigsSpeakMsg(GET_Wind, dtostrf(windSpeed, 4, 1, buffer));
       }
     }
 }
-
 
 void doTheJob()
 {
