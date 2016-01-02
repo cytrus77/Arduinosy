@@ -36,7 +36,7 @@ bool FirstInit = {false}, addrsrv = {false};
 U16 keyidval=0;
 uint8_t	myvNet_dhcp=0;
 
-/**************************************************************************
+/**************************************************************************/
 /*!
 	Set and init network configuration
 */	
@@ -91,7 +91,7 @@ void Souliss_SetAddress(U16 addr, U16 subnetmask, U16 mysupernode)
 	
 }
 
-/**************************************************************************
+/**************************************************************************/
 /*!
 	Set the addresses of local nodes into the memory map, shall be used
 	for gateway node
@@ -105,7 +105,32 @@ void Souliss_SetLocalAddress(U8 *memory_map, U16 addr)
 	
 }
 
-/**************************************************************************
+/**************************************************************************/
+/*!
+	Reset the addresses of local nodes into the memory map, shall be used
+	to have the node acting not as a gateway
+*/	
+/**************************************************************************/
+void Souliss_ResetLocalAddress(U8 *memory_map)
+{
+	// Set the remote address of a node into the vNet
+	*(memory_map+MaCaco_ADDRESSES_s)   = 0;
+	*(memory_map+MaCaco_ADDRESSES_s+1) = 0;
+	
+}
+
+/**************************************************************************/
+/*!
+	Get the addresses of local nodes from the memory map, identify if a node
+	has been set as gateway at runtime
+*/	
+/**************************************************************************/
+U16 Souliss_GetLocalAddress(U8 *memory_map)
+{
+	return C8TO16(memory_map);
+}
+
+/**************************************************************************/
 /*!
 	Set the addresses of other nodes into the network
 */	
@@ -117,7 +142,7 @@ void Souliss_SetRemoteAddress(U8 *memory_map, U16 addr, U8 node)
 	*(memory_map+MaCaco_ADDRESSES_s+node*2+1) = C16TO8H(addr);	
 }
 
-/**************************************************************************
+/**************************************************************************/
 /*!
 	Set an IP address and calculate automatically the vNet address, it
 	overwrite all other settings
@@ -126,7 +151,7 @@ void Souliss_SetRemoteAddress(U8 *memory_map, U16 addr, U8 node)
 void Souliss_SetIPAddress(U8* ip_address, U8* subnet_mask, U8* ip_gateway)
 {	
 	// Starting from IP configuration define the vNet ones
-	U8 i=0;
+	U8 i=0, timeout=20;
 	for(i=0; i<4; i++)
 	{
 		if(DEFAULT_BASEIPADDRESS) 	DEFAULT_BASEIPADDRESS[i]=ip_address[i];
@@ -138,28 +163,45 @@ void Souliss_SetIPAddress(U8* ip_address, U8* subnet_mask, U8* ip_gateway)
 	DEFAULT_BASEIPADDRESS[i-1]=0;						// The BASEIPADDRESS has last byte always zero
 
 	#if(MCU_TYPE == 0x02)	// Expressif ESP8266
-	// Setup the SSID and Password
-	WiFi.begin(WiFi_SSID, WiFi_Password);
 	
-	// Connect
-	while (WiFi.status() != WL_CONNECTED) 	
-		delay(500);
-	
-	// Set manually an IP address
-	WiFi.config(ip_address, ip_gateway, subnet_mask);
+		#if(ESP8266_GEF26cCF)
+		// If is the first time that we connect to WiFi.SSID
+		if(strcmp(WiFi.SSID(), WiFi_SSID) || strcmp(WiFi.psk(), WiFi_Password))
+		{
+			WiFi.mode(WIFI_STA);
+			WiFi.begin(WiFi_SSID, WiFi_Password);
+		}
+		else
+			WiFi.begin();	// WiFi.SSID is a known network, no need to specify it
+		#elif(ESP8266_G39819F0)
+			WiFi.mode(WIFI_STA);
+			WiFi.begin(WiFi_SSID, WiFi_Password);
+		#endif
+		
+		// Connect
+		while ((WiFi.status() != WL_CONNECTED) && timeout)
+		{
+			timeout--;
+			delay(500);
+		}
+
+		// Set manually an IP address
+		WiFi.config(ip_address, ip_gateway, subnet_mask);
+
 	#endif
 	
 	// Set the address
 	Souliss_SetAddress(vNet_address, DYNAMICADDR_SUBNETMASK, 0);
 }
 
-/**************************************************************************
+/**************************************************************************/
 /*!
 	Get IP Address from DHCP
 */	
 /**************************************************************************/ 
-void Souliss_GetIPAddress()
+uint8_t Souliss_GetIPAddress(U8 timeout=20)
 {
+
 #if((MCU_TYPE == 0x01) && ARDUINO_DHCP)	// Atmel AVR Atmega
 
 	// Use software based DHCP client
@@ -168,14 +210,31 @@ void Souliss_GetIPAddress()
 	
 	// The last byte of the IP address is used as vNet address
 	myvNet_dhcp = ip[3];	
-	
+
+	/*** This calls Souliss_SetIPAddress directly	***/
+
 #elif(MCU_TYPE == 0x02)	// Expressif ESP8266
-	// Setup the SSID and Password
-	WiFi.begin(WiFi_SSID, WiFi_Password);
 	
+	#if(ESP8266_GEF26cCF)
+	// If is the first time that we connect to WiFi.SSID
+	if(strcmp(WiFi.SSID(), WiFi_SSID) || strcmp(WiFi.psk(), WiFi_Password))
+	{
+		WiFi.mode(WIFI_STA);
+		WiFi.begin(WiFi_SSID, WiFi_Password);
+	}
+	else
+		WiFi.begin();	// WiFi.SSID is a known network, no need to specify it
+	#elif(ESP8266_G39819F0)
+		WiFi.mode(WIFI_STA);
+		WiFi.begin(WiFi_SSID, WiFi_Password);
+	#endif
+
 	// Connect
-	while (WiFi.status() != WL_CONNECTED) 	
+	while ((WiFi.status() != WL_CONNECTED) && timeout)
+	{
+		timeout--;
 		delay(500);
+	}
 	
 	// Get the IP network parameters
 	IPAddress lIP  = WiFi.localIP();
@@ -209,12 +268,328 @@ void Souliss_GetIPAddress()
 	DEFAULT_BASEIPADDRESS[i-1]=0;					// The BASEIPADDRESS has last byte always zero
 	
 	// Set the address
-	Souliss_SetAddress(vNet_address, DYNAMICADDR_SUBNETMASK, 0);	
+	Souliss_SetAddress(vNet_address, DYNAMICADDR_SUBNETMASK, 0);
+
+	#if(MCU_TYPE == 0x02)
+	if(WiFi.status() != WL_CONNECTED) 
+	{
+		// Print debug messages
+		#if (SOULISS_DEBUG)
+		SOULISS_LOG(F("(ss)<WiFi Fail>\r\n"));
+		#endif	
+
+		return 0;
+	}
+	else 
+	{
+		// Print debug messages
+		#if (SOULISS_DEBUG)
+		SOULISS_LOG(F("(ss)<WiFi Connected>\r\n"));
+		#endif	
+
+		return 1;
+	}
+	#endif
+
 #endif	
-}						
+}												
+
+/**************************************************************************/
+/*!
+	Start the node as an access point
+*/	
+/**************************************************************************/ 
+#if(MCU_TYPE == 0x02)	// Expressif ESP8266
+void Souliss_SetAccessPoint()
+{
+	uint8_t i;
+	uint8_t ipaddr[4];
+	uint8_t gateway[4];		
+	
+	// Use a static access point name with a dynamic number
+	char _time[9] = __TIME__;
+	char _apname[18]= "Souliss_000000000";
+	
+	// Build the access point name
+	for(i=0;i<8;i++)
+		_apname[i+9] = _time[i];
+	
+	WiFi.mode(WIFI_AP);
+	WiFi.softAP(_apname);
+
+	// Setup the Souliss framework, get the IP network parameters
+	IPAddress lIP  = WiFi.softAPIP();
 
 
-/**************************************************************************
+	
+	for(i=0;i<4;i++)
+	{
+		ipaddr[i]  = lIP[i];
+		gateway[i] = lIP[i];
+	}	
+
+	// The last byte of the IP address is used as vNet address
+	myvNet_dhcp = ipaddr[3];
+	
+	// Starting from IP configuration define the vNet ones
+	for(i=0; i<4; i++)
+	{
+		if(DEFAULT_BASEIPADDRESS) 	DEFAULT_BASEIPADDRESS[i]=ipaddr[i];
+		if(DEFAULT_GATEWAY) 		DEFAULT_GATEWAY[i] = gateway[i];
+	}
+	
+	U16 vNet_address = (U16)ipaddr[i-1];			// The last byte of the IP address is the vNet one
+	DEFAULT_BASEIPADDRESS[i-1]=0;					// The BASEIPADDRESS has last byte always zero
+	
+	// Set the address
+	Souliss_SetAddress(vNet_address, DYNAMICADDR_SUBNETMASK, 0);	
+}
+#endif
+
+/**************************************************************************/
+/*!
+	Read IP Configuration from EEPROM or equivalent
+*/	
+/**************************************************************************/ 
+#if(USEEEPROM)
+uint8_t Souliss_ReadIPConfiguration()
+{
+	U8 i=0, timeout=20;
+
+	// If a valid configuration hasn't been found
+	if(Return_ID()!=STORE__DEFAULTID) 
+	{
+		// Print debug messages
+		#if (SOULISS_DEBUG)
+		SOULISS_LOG(F("(ss)<No stored config>\r\n"));
+		#endif
+		
+		return 0;	
+	}
+
+	// Setup the SSID and Password
+	#if(MCU_TYPE == 0x02)	
+	String SSID = Read_SSID();
+	String PSW  = Read_Password();
+
+		#if (SOULISS_DEBUG)
+		// Print debug messages
+		SOULISS_LOG(F("(ss)<Read_SSID>"));
+		SOULISS_LOG(SSID);	
+		SOULISS_LOG("\r\n");
+
+		SOULISS_LOG(F("(ss)<Read_Password>"));
+		SOULISS_LOG(PSW);	
+		SOULISS_LOG("\r\n");
+		#endif
+
+	#endif
+
+	// If the DHCP Mode is set
+	if(Return_DHCPMode())
+	{
+		// Print debug messages
+		#if (SOULISS_DEBUG)
+		SOULISS_LOG(F("(ss)<DHCPMode Set>\r\n"));
+		#endif		
+
+		#if((MCU_TYPE == 0x01) && ARDUINO_DHCP)	// Atmel AVR Atmega
+
+			// Use software based DHCP client
+			Ethernet.begin();
+			IPAddress ip = Ethernet.localIP();
+			
+			// The last byte of the IP address is used as vNet address
+			myvNet_dhcp = ip[3];	
+			
+		#elif(MCU_TYPE == 0x02)	// Expressif ESP8266
+			
+			#if(ESP8266_GEF26cCF)
+			// If is the first time that we connect to WiFi.SSID
+
+			#if (SOULISS_DEBUG)
+			// Print debug messages
+			SOULISS_LOG(F("(ss)<Read_SSID>"));
+			SOULISS_LOG(WiFi.SSID());	
+			SOULISS_LOG("\r\n");
+
+			SOULISS_LOG(F("(ss)<Read_Password>"));
+			SOULISS_LOG(WiFi.psk());	
+			SOULISS_LOG("\r\n");
+			#endif
+
+			if(strcmp(WiFi.SSID(), SSID.c_str()) || strcmp(WiFi.psk(), PSW.c_str()))
+			{
+				WiFi.mode(WIFI_STA);
+				WiFi.begin(SSID.c_str(), PSW.c_str());
+			}
+			else
+				WiFi.begin();				// WiFi.SSID is a known network, no need to specify it
+			#elif(ESP8266_G39819F0)
+				WiFi.mode(WIFI_STA);
+				WiFi.begin(SSID.c_str(), PSW.c_str());
+			#endif
+
+			// Connect
+			while ((WiFi.status() != WL_CONNECTED) && timeout)
+			{
+				timeout--;
+				delay(500);
+			}
+			
+			// Get the IP network parameters
+			IPAddress lIP  = WiFi.localIP();
+			IPAddress sMk  = WiFi.subnetMask();
+			IPAddress gIP  = WiFi.gatewayIP();
+			
+			uint8_t i;
+			uint8_t ipaddr[4];
+			uint8_t subnet[4];
+			uint8_t gateway[4];
+			
+			for(i=0;i<4;i++)
+			{
+				ipaddr[i]  = lIP[i];
+				subnet[i]  = sMk[i];
+				gateway[i] = gIP[i];
+			}	
+
+			// The last byte of the IP address is used as vNet address
+			myvNet_dhcp = ipaddr[3];
+			
+			// Starting from IP configuration define the vNet ones
+			for(i=0; i<4; i++)
+			{
+				if(DEFAULT_BASEIPADDRESS) 	DEFAULT_BASEIPADDRESS[i]=ipaddr[i];
+				if(DEFAULT_SUBMASK) 		DEFAULT_SUBMASK[i] = subnet[i];
+				if(DEFAULT_GATEWAY) 		DEFAULT_GATEWAY[i] = gateway[i];
+			}
+			
+			U16 vNet_address = (U16)ipaddr[i-1];			// The last byte of the IP address is the vNet one
+			DEFAULT_BASEIPADDRESS[i-1]=0;					// The BASEIPADDRESS has last byte always zero
+			
+			// Set the address
+			Souliss_SetAddress(vNet_address, DYNAMICADDR_SUBNETMASK, 0);	
+		#endif	
+	}
+	else					
+	{
+		// Static IP Address
+		uint8_t _ip_address[4];
+		uint8_t _subnet_mask[4];
+		uint8_t _ip_gateway[4];
+
+		// Read from EEPROM
+		Return_StaticIPAddress(_ip_address);
+		Return_StaticIPSubnet(_subnet_mask);
+		Return_StaticIPGateway(_ip_gateway);
+
+		#if (SOULISS_DEBUG)
+		// Print debug messages
+		SOULISS_LOG(F("(ss)<IP Addr:><0x"));
+		for(U8 i=0;i<4;i++)	
+		{
+			SOULISS_LOG(_ip_address[i],HEX);
+			SOULISS_LOG(F("|0x"));
+		}
+		SOULISS_LOG(">\r\n");
+
+		SOULISS_LOG(F("(ss)<IP Subn:><0x"));
+		for(U8 i=0;i<4;i++)	
+		{
+			SOULISS_LOG(_subnet_mask[i],HEX);
+			SOULISS_LOG(F("|0x"));
+		}
+		SOULISS_LOG(">\r\n");
+
+		SOULISS_LOG(F("(ss)<IP Gtwy:><0x"));
+		for(U8 i=0;i<4;i++)	
+		{
+			SOULISS_LOG(_ip_gateway[i],HEX);
+			SOULISS_LOG(F("|0x"));
+		}
+		SOULISS_LOG(">\r\n");
+		#endif
+
+		// Set IP Address
+		for(i=0; i<4; i++)
+		{
+			if(DEFAULT_BASEIPADDRESS) 	DEFAULT_BASEIPADDRESS[i]=_ip_address[i];
+			if(DEFAULT_SUBMASK) 		DEFAULT_SUBMASK[i] = _subnet_mask[i];
+			if(DEFAULT_GATEWAY) 		DEFAULT_GATEWAY[i] = _ip_gateway[i];
+		}
+		
+		myvNet_dhcp = (U16)_ip_address[i-1];			// The last byte of the IP address is the vNet one
+		DEFAULT_BASEIPADDRESS[i-1]=0;						// The BASEIPADDRESS has last byte always zero
+
+		#if(MCU_TYPE == 0x02)	// Expressif ESP8266
+
+			#if (SOULISS_DEBUG)
+			// Print debug messages
+			SOULISS_LOG(F("(ss)<Read_SSID>"));
+			SOULISS_LOG(WiFi.SSID());	
+			SOULISS_LOG("\r\n");
+
+			SOULISS_LOG(F("(ss)<Read_Password>"));
+			SOULISS_LOG(WiFi.psk());	
+			SOULISS_LOG("\r\n");
+			#endif
+
+			#if(ESP8266_GEF26cCF)
+			// If is the first time that we connect to WiFi.SSID
+			if(strcmp(WiFi.SSID(), SSID.c_str()) || strcmp(WiFi.psk(), PSW.c_str()))
+			{
+				WiFi.mode(WIFI_STA);
+				WiFi.begin(SSID.c_str(), PSW.c_str());
+			}
+			else
+				WiFi.begin();				// WiFi.SSID is a known network, no need to specify it
+
+			#elif(ESP8266_G39819F0)
+				WiFi.mode(WIFI_STA);
+				WiFi.begin(SSID.c_str(), PSW.c_str());		
+			#endif
+
+			// Connect
+			while ((WiFi.status() != WL_CONNECTED) && timeout)
+			{
+				timeout--;
+				delay(500);
+			}
+		
+			// Set manually an IP address
+			WiFi.config(_ip_address, _ip_gateway, _subnet_mask);
+
+		#endif
+		
+		// Set the address
+		Souliss_SetAddress(myvNet_dhcp, DYNAMICADDR_SUBNETMASK, 0);
+	}
+
+	#if(MCU_TYPE == 0x02)
+	if(WiFi.status() != WL_CONNECTED) 
+	{
+		// Print debug messages
+		#if (SOULISS_DEBUG)
+		SOULISS_LOG(F("(ss)<WiFi Fail>\r\n"));
+		#endif	
+
+		return 0;
+	}
+	else 
+	{
+		// Print debug messages
+		#if (SOULISS_DEBUG)
+		SOULISS_LOG(F("(ss)<WiFi Connected>\r\n"));
+		#endif	
+
+		return 1;
+	}
+	#endif
+}
+#endif
+
+/**************************************************************************/
 /*!
 	Define a gateway node as server for dynamic addressing, media without
 	an address will get one automatically.
@@ -246,7 +621,7 @@ void Souliss_SetAddressingServer(U8 *memory_map)
 	// If previously we got the network addresses, recover them from EEPROM
 	#if(USEEEPROM)
 	if(Return_ID()==STORE__DEFAULTID)
-		Return_PeerAddresses((memory_map + MaCaco_ADDRESSES_s), MaCaco_NODES);
+		Return_PeerAddresses((memory_map + MaCaco_ADDRESSES_s + 2), MaCaco_NODES - 1);
 	
 		#if (SOULISS_DEBUG)
 		// Print debug messages
@@ -263,7 +638,7 @@ void Souliss_SetAddressingServer(U8 *memory_map)
 	#endif	
 }
 
-/**************************************************************************
+/**************************************************************************/
 /*!
 	Set the node to retrieve the address dynamically, this cannot be applied
 	for IP based nodes
@@ -292,11 +667,10 @@ void Souliss_SetDynamicAddressing()
 	}
 }
 
-/**************************************************************************
+/**************************************************************************/
 /*!
 	Before proceed to request and address, at first boot, look for a previously
 	assigned address.
-
 */	
 /**************************************************************************/
 U8 Souliss_DynamicAddressing_FirstBoot (U8 *memory_map)
@@ -334,7 +708,7 @@ U8 Souliss_DynamicAddressing_FirstBoot (U8 *memory_map)
 	
 	return 0;
 }
-/**************************************************************************
+/**************************************************************************/
 /*!
 	Request an addressing and parse the answer, need an unique identifier
 	id that is used while the node hasn't a valid address.
@@ -439,7 +813,7 @@ U8 Souliss_DynamicAddressing (U8 *memory_map, const char id[], U8 size)
 	return 0;
 }
 
-/**************************************************************************
+/**************************************************************************/
 /*!
 	Send a request to join a network, shall be periodically processed by nodes
 	that requested a dynamic address
@@ -452,7 +826,7 @@ void Souliss_JoinNetwork()
 		MaCaco_send(0xFFFF, MaCaco_JOINNETWORK, keyidval, 0, 0, 0);
 }
 
-/**************************************************************************
+/**************************************************************************/
 /*!
 	Send a request to join a network and request a reset of the subscription, 
 	use carefully only at begin on a join

@@ -38,6 +38,7 @@ U8 data_changed = 1;						// flag
 U16 phase_speedy=0, phase_fast=0, phase_slow=0;
 unsigned long tmr_fast=0, tmr_slow=0;  
 
+
 #define EXECUTEFAST()	if(abs(millis()-tmr_fast) > time_base_fast)
 #define UPDATEFAST()	tmr_fast = millis();	\
 						phase_fast = (phase_fast + 1) % num_phases
@@ -50,6 +51,7 @@ unsigned long tmr_fast=0, tmr_slow=0;
 #define	FAST_70ms()		if (!(phase_fast % 7))
 #define	FAST_90ms()		if (!(phase_fast % 9))
 #define	FAST_110ms()	if (!(phase_fast % 11))
+#define FAST_210ms()	if (!(phase_fast % 21))
 #define	FAST_510ms()	if (!(phase_fast % 51))
 #define	FAST_710ms()	if (!(phase_fast % 71))
 #define	FAST_910ms()	if (!(phase_fast % 91))
@@ -62,6 +64,24 @@ unsigned long tmr_fast=0, tmr_slow=0;
 #define	FAST_71110ms()	if (!(phase_fast % 7111))
 #define	FAST_91110ms()	if (!(phase_fast % 9111))
 
+#define	SHIFT_10ms(n)		if ((phase_fast % 1)==n)
+#define	SHIFT_30ms(n)		if ((phase_fast % 3)==n)
+#define	SHIFT_50ms(n)		if ((phase_fast % 5)==n)
+#define	SHIFT_70ms(n)		if ((phase_fast % 7)==n)
+#define	SHIFT_90ms(n)		if ((phase_fast % 9)==n)
+#define	SHIFT_110ms(n)		if ((phase_fast % 11)==n)
+#define SHIFT_210ms(n)		if ((phase_fast % 21)==n)
+#define	SHIFT_510ms(n)		if ((phase_fast % 51)==n)
+#define	SHIFT_710ms(n)		if ((phase_fast % 71)==n)
+#define	SHIFT_910ms(n)		if ((phase_fast % 91)==n)
+#define	SHIFT_1110ms(n)		if ((phase_fast % 111)==n)
+#define	SHIFT_2110ms(n)		if ((phase_fast % 211)==n)
+#define	SHIFT_7110ms(n)		if ((phase_fast % 711)==n)
+#define	SHIFT_9110ms(n)		if ((phase_fast % 911)==n)
+#define	SHIFT_11110ms(n)	if ((phase_fast % 1111)==n)
+#define	SHIFT_21110ms(n)	if ((phase_fast % 2111)==n)
+#define	SHIFT_71110ms(n)	if ((phase_fast % 7111)==n)
+#define	SHIFT_91110ms(n)	if ((phase_fast % 9111)==n)
 
 #define EXECUTESLOW()	else if(abs(millis()-tmr_slow) > time_base_slow)
 #define UPDATESLOW()	tmr_slow = millis();	\
@@ -129,6 +149,13 @@ unsigned long tmr_fast=0, tmr_slow=0;
 #define Set_T16(slot)				Souliss_SetT16(memory_map, slot)
 #define Logic_T16(slot)				Souliss_Logic_T16(memory_map, slot, &data_changed)
 #define Timer_T16(slot)				Souliss_T16_Timer(memory_map, slot)
+
+#define Set_StepRelay(slot)			Souliss_SetT18(memory_map, slot)
+#define Logic_StepRelay(slot)		Souliss_Logic_T18(memory_map, slot, &data_changed)
+#define Timer_StepRelay(slot)		Souliss_T18_Timer(memory_map, slot)
+#define Set_T18(slot)				Souliss_SetT18(memory_map, slot)
+#define Logic_T18(slot)				Souliss_Logic_T18(memory_map, slot, &data_changed)
+#define Timer_T18(slot)				Souliss_T18_Timer(memory_map, slot)
 
 #define Set_DimmableLight(slot)		Souliss_SetT19(memory_map, slot)
 #define Logic_DimmableLight(slot)	Souliss_Logic_T19(memory_map, slot, &data_changed)
@@ -226,9 +253,15 @@ unsigned long tmr_fast=0, tmr_slow=0;
 #define	SetDynamicAddressing()									Souliss_SetDynamicAddressing()
 #define	SetIPAddress											Souliss_SetIPAddress
 #define GetIPAddress											Souliss_GetIPAddress
+#define SetAccessPoint											Souliss_SetAccessPoint
+#define ReadIPConfiguration										Souliss_ReadIPConfiguration
+#define	IsRuntimeGateway										MaCaco_IsRuntimeGateway
 #define	JoinNetwork()											Souliss_JoinNetwork()
 #define	JoinAndReset()											Souliss_JoinAndReset()
+#define SetUserInterface										UserMode_ManualRecord
 #define SetAsGateway(address)									Souliss_SetLocalAddress(memory_map, address)
+#define RemoveAsGateway()										Souliss_ResetLocalAddress(memory_map)
+#define GetAsGateway()											Souliss_GetLocalAddress(memory_map)
 #define	SetAsPeerNode(address, index)							Souliss_SetRemoteAddress(memory_map, address, index)
 #define	SetAsBatteryNode(address, index)						Souliss_SetRemoteAddress(memory_map, address, index);	\
 																Souliss_BatteryChannels(memory_map, address)
@@ -242,6 +275,8 @@ unsigned long tmr_fast=0, tmr_slow=0;
 #define	DigIn2State(pin,value_state_on,value_state_off,slot)	Souliss_DigIn2State(pin, value_state_on, value_state_off, memory_map, slot)
 #define	DigInHold(pin, value_state1,value_state2,slot)			Souliss_DigInHold(pin, value_state1, value_state2, memory_map, slot)
 #define	LowDigInHold(pin, value_state1,value_state2,slot)		Souliss_LowDigInHold(pin, value_state1, value_state2, memory_map, slot)
+#define	DigKeepHold(pin, value_state1,value_state2,slot)		Souliss_DigKeepHold(pin, value_state1, value_state2, memory_map, slot)
+#define	LowDigKeepHold(pin, value_state1,value_state2,slot)		Souliss_LowDigKeepHold(pin, value_state1, value_state2, memory_map, slot)
 #define DigOut(pin,value,slot)									Souliss_DigOut(pin, value, memory_map, slot)
 #define nDigOut(pin,value,slot)									Souliss_nDigOut(pin, value, memory_map, slot)
 #define LowDigOut(pin,value,slot)								Souliss_LowDigOut(pin, value, memory_map, slot)
@@ -255,7 +290,9 @@ unsigned long tmr_fast=0, tmr_slow=0;
 #define	Send													Souliss_RemoteInput
 #define	SendData												Souliss_RemoteInputs
 #define	ResetInput(slot)										Souliss_ResetInput(memory_map, slot)
+#define PullData(addr, slot, remote_slot, remote_numbof)		Souliss_PullData(addr, slot, remote_slot, remote_numbof)
 #define	RoutingTable											vNet_SetRoutingTable
+#define	DonotRouteTable											vNet_SetDoNotRoutingTable
 #define	Init_XMLServer()										XMLSERVERInit(memory_map)
 #define	Run_XMLServer()											XMLSERVERInterface(memory_map)
 #define	Init_Modbus()											ModbusInit(memory_map)

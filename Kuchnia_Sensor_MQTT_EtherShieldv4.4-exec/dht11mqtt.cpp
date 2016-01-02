@@ -14,8 +14,6 @@ dht11mqtt::dht11mqtt(int tempTopic, int humidityTopic, int pin)
 	m_mqttTempTopic   = tempTopic;
 	m_mqttHumiTopic   = humidityTopic;
 	m_pin             = pin;
-	registerToMqttTable(&m_mqttTempTopic, &m_tempValue, &m_sendFlag);
-	registerToMqttTable(&m_mqttHumiTopic, &m_humiValue, &m_sendFlag);
 }
 
 void dht11mqtt::doMeasure()

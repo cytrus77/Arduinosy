@@ -10,6 +10,8 @@ bool getDiffTime(unsigned long* timer, int diffInSec);
 int* getDHT11temp();
 void sendMqttData();
 void registerToMqttTable(int* topic, int* value, int* flag);
+void callback(char* topic, byte* payload, unsigned int length);
+void SendMqtt();
 
 #endif
 

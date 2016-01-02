@@ -32,8 +32,12 @@
 #define LYT_H
 
 #define	LYT_MaxBright					0xFF
-#define	LYT_MedBright					0x10
+#define	LYT_MedBright					0x50
 #define	LYT_MinBright					0x00
+
+#define	BRIGHT_STEP						5
+#define	BRIGHT_DEFAULT					LYT_MedBright
+
 #define	LYT_MAXNUM						0x0A			// Maximum number of LYT groups
 #define	LYT_LoweredCommandRepetition	0x06
 #define	LYT_StandardCommandRepetition	PROTOCOL_COMMAND_REPETITION
@@ -43,14 +47,17 @@ typedef struct
 	U8	addr_a;
 	U8	addr_b;
 	U8	slot;
+	U8	set;
+	U8	answer_timeout;
 } LYT_struct;
 					
 void Souliss_SetLYTLamps(U8 *memory_map, U8 slot);
 U8 Souliss_Logic_LYTLamps(U8 *memory_map, U8 slot, U8 *trigger);					
 void Souliss_LYTState(U8* memory_map, U8 slot, U8* trigger);
-void Souliss_LYTStateRequest(U8 slot);
+void Souliss_LYTStateRequest();
 void SetLYT(U8 index, U8 addr_a, U8 addr_b, U8 slot);
 U8 FindLYT(U8 slot);
+void InitLYT();
 			
 // Define short cuts for often used variables, for more info read about SpeakEasy	
 #define	SetLYTLamps(slot)			Souliss_SetLYTLamps(memory_map, slot)

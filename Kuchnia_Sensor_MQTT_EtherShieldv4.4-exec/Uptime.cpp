@@ -14,7 +14,6 @@ uptime::uptime(int topic)
 	m_mqttTopic  = topic;
 	m_uptime     = 0;
 	m_sendFlag   = 0;
-	registerToMqttTable(&m_mqttTopic,   &m_uptime, &m_sendFlag);
 }
 
 void uptime::getUptime()
@@ -29,3 +28,4 @@ void uptime::getUptime()
 		#endif
 	}
 }
+

@@ -14,24 +14,16 @@
 #include "dht11mqtt.h"
 #include "Uptime.h"
 
-//EthernetClient ethClient;
-//PubSubClient client(server, 1883, callback, ethClient);
+// Update these with values suitable for your network.
+byte mac[]    = {  0xDE, 0x33, 0xBA, 0xFE, 0x11, 0xEF };
+byte server[] = { 192, 168, 137, 2 };
+byte ip[]     = { 192, 168, 137, 10 };
 
-int loopCounter         = 0;
-int mqttMode            = MQTTCONFIG;
-int mqttSubscrib[]      = {MQTT_CONFIG_START, MQTT_HEALTH_CHECK, MQTT_DIMMER, MQTT_PHOTO_TRIGGER, MQTT_DIMMER_TIMER, MQTT_CONFIG_END};
-int mqttSubscribCounter = 0;
-int* sendBuffer[MQTT_PUBLISH_COUNTER][3]  = {};
-int measurePeriod       = MEASUREPERIOD/2;
-int pirLastValue        = 0;
-int healthCheckTimer    = 0;
+EthernetClient ethClient;
+PubSubClient client(server, 1883, callback, ethClient);
 
 //Sensor Vars
 dimmer ledDimmer(MQTT_DIMMER, LEDDIMMERPIN, MQTT_DIMMER_TIMER, MQTT_PHOTO_TRIGGER, MQTT_DIMMER_STATUS, MQTT_DIMMER_TIMER_STATUS, MQTT_PHOTO_TRIGGER_STATUS);
-sensor motionSensor(MQTT_MOTION, MOTIONSENSORPIN, INVERTEDSCALE, DIGITALTYPE);
-sensor gasSensor   (MQTT_GAS,    GASSENSORPIN,    NORMALSCALE,   ANALOGTYPE);
-sensor floodSensor (MQTT_FLOOD,  FLOODSENSORPIN,  INVERTEDSCALE, ANALOGTYPE);
-sensor photoSensor (MQTT_PHOTO,  PHOTOSENSORPIN,  INVERTEDSCALE, ANALOGTYPE);
 OneWire  ds18b20   (DS18B20PIN); 
 dht11mqtt DHT11    (MQTT_TEMP,   MQTT_HUMIDEX,    DHT11PIN);
 uptime Uptime      (MQTT_UPTIME);
@@ -44,14 +36,19 @@ void setup() {
   Serial.println("setup()");
   #endif
       
-  Wire.begin(I2C_EXEC_ADDR);                // join i2c bus with address #2
-  Wire.onRequest(requestEvent); // register event
-  Wire.onReceive(receiveEvent);
+  Ethernet.begin(mac, ip);
+  delay(5000);
+  if (client.connect("DVES_duino", "admin", "Isb_C4OGD4c3")) 
+  {
+    Serial.println("Connected");
+    delay(5000);
+    client.publish("1000","9999");
+    client.subscribe("inTopic");
+  }
   
   //Smooth dimming interrupt init
   Timer1.initialize(2000);
   Timer1.attachInterrupt(TimerLoop);
-  setMqttConfig();
   wdt_enable(WDTO_8S);
 }
 /////////////////////////////////////////////END SETUP/////////////////////////////////////////////////
@@ -59,37 +56,36 @@ void setup() {
 /////////////////////////////////////////////START MAIN LOOP/////////////////////////////////////////////////
 void loop() {  
   wdt_reset();
-  health_check();
-  
-  static int counter = 0;
-  if(loopCounter > measurePeriod)
+  client.loop();
+  Serial.println("loop");
+
+  if(client.connected())
   {
-      counter = (counter+1)%sensor::m_sensorCounter;
-      sensor::sensorPtr[counter]->doMeasure();
-      Uptime.getUptime();        
-      #ifdef DEBUG
-      Serial.println("loopCounter > measurePeriod");
-      #endif
-      loopCounter = 0;
+    Uptime.getUptime();        
+    Serial.println("getTime - wysylanie");
+    SendMqtt();
+  //  delay(3000);
   }
-  
-  static unsigned long DHT111Timer;
-  if(getDiffTime(&DHT111Timer, 2*SENSORSENDPERIOD))
+  else
   {
-      Timer1.setPeriod(100000);
-      DHT11.doMeasure();
-      Timer1.setPeriod(2000);
+     Serial.println("Rozlaczony");
+     if (client.connect("DVES_duino", "admin", "Isb_C4OGD4c3")) 
+     {
+       Serial.println("Connected");
+       delay(5000);
+       client.publish("1000","9999");
+       client.subscribe("inTopic");
+     }
   }
 }
 /////////////////////////////////////////////END MAIN LOOP/////////////////////////////////////////////////
 
 void TimerLoop()
 {
-  loopCounter++;
- 
-  if(pirLastValue != motionSensor.m_value)
+  static int pirLastValue = 0;
+  if(pirLastValue)
   {
-    if(motionSensor.m_value && ledDimmer.m_trigger >= photoSensor.m_value)
+    if(ledDimmer.m_trigger)
     {
       if(ledDimmer.m_setValue > 25)
       {
@@ -99,102 +95,9 @@ void TimerLoop()
       {
         ledDimmer.setValue(100);
       }
-      pirLastValue = motionSensor.m_value;
-    }
-    else if (!motionSensor.m_value)
-    {
-      pirLastValue = motionSensor.m_value;
     }
   }
   ledDimmer.setDimmer();
-  
-}
-
-////////////////////////////////////////////////////////////////////////////////
-///////////WIRE stuff///////////////////////////////////////////////////////////
-// function that executes whenever data is requested by master
-// this function is registered as an event, see setup()
-void requestEvent()
-{
- healthCheckTimer = millis();   // reset HC timer
- #ifdef DEBUG
- Serial.println("requestEvent()");
- #endif
- if(mqttMode == MQTTCONFIG)
- {
-    send2Ints(mqttSubscrib[mqttSubscribCounter], 1);
-    mqttSubscribCounter++;
-    if(mqttSubscrib[mqttSubscribCounter-1] == MQTT_CONFIG_END) 
-    {
-       setMqttNormal();
-    }
- }
- else if(mqttMode == MQTTNORMAL)
- {
-    sendMqttData();
- }
-}
-
-void receiveEvent(int howMany)
-{ 
-  int* ptr;
-  #ifdef DEBUG
-  Serial.println("receiveEvent(int howMany)");
-  #endif
-  ptr = get2Ints();
-  #ifdef DEBUG
-  Serial.print("receiveEvent(int howMany) - ptr = ");
-  Serial.println(*ptr);
-  #endif
-  switch(*ptr)
-  {
-    case MQTT_CONFIG_START:
-    {
-      setMqttConfig();
-      mqttSubscribCounter = 1;
-    }
-    case MQTT_DIMMER:
-    {
-      ledDimmer.setValue(*(ptr+1));
-      break;
-    }
-    case MQTT_PHOTO_TRIGGER:
-    {
-      ledDimmer.setTrigger(*(ptr+1));
-      break;
-    }
-    case MQTT_DIMMER_TIMER:
-    {
-      ledDimmer.setTimer(*(ptr+1));
-      break;
-    }
-    default: 
-    {
-        #ifdef DEBUG
-        Serial.println("Przyszla wiadomosc o nieznanym ID");
-        #endif
-        break;
-    }
-  }
-}
-
-void setMqttConfig()
-{
-	mqttMode = MQTTCONFIG;
-	mqttSubscribCounter = 0;
-	#ifdef DEBUG
-	Serial.print("setMqttConfig() - mqttMode = ");
-	Serial.println(mqttMode);
-	#endif
-}
-
-void setMqttNormal()
-{
-	mqttMode = MQTTNORMAL;
-	#ifdef DEBUG
-	Serial.print("setMqttNormal() - mqttMode = ");
-	Serial.println(mqttMode);
-	#endif
 }
 
 int* get2Ints()
@@ -252,54 +155,55 @@ bool getDiffTime(unsigned long* timer, int diffInSec)
          else return false;
 }
 
-void(* resetFunc) (void) = 0;     //declare reset function at address 0
-
-void health_check()
-{
-   long timer = millis();
-   if(timer - healthCheckTimer > 70000)
-   {
-       resetFunc();
-   }
-}
-
-void registerToMqttTable(int* topic, int* value, int* flag)
-{
-    static int counter = 0;
-    if(counter < MQTT_PUBLISH_COUNTER)
-    {
-       sendBuffer[counter][0] = topic;
-       sendBuffer[counter][1] = value;
-       sendBuffer[counter][2] = flag;    
-       ++counter;
-    }
-    else
-    {
-       #ifdef DEBUG
-       Serial.println("WARNING! sendBuffer[] is to small !!!");
-       #endif
-    }
-}
-
-void sendMqttData()
-{
-  int counter = 0;
-  while(!(*sendBuffer[counter][2]) && counter < MQTT_PUBLISH_COUNTER) ++counter;
+// Callback function
+void callback(char* topic, byte* payload, unsigned int length) {
+  // In order to republish this payload, a copy must be made
+  // as the orignal payload buffer will be overwritten whilst
+  // constructing the PUBLISH packet.
+  int data = 0;
   
-  if(*sendBuffer[counter][0] >= 1000 && *sendBuffer[counter][0] <= 10000 && *sendBuffer[counter][2] > 0)
+  #ifdef DEBUG
+  Serial.print(topic);
+  Serial.print(" => ");
+  Serial.write(payload, length);
+  #endif
+  
+  // Allocate the correct amount of memory for the payload copy
+  byte* p = (byte*)malloc(length+1);
+  // Copy the payload to the new buffer
+  memcpy(p,payload,length);
+  p[length] = 0;
+  data = atoi((char *) p);
+
+  switch(atoi(topic))
   {
-      #ifdef DEBUG
-      Serial.print("sendMqttData() - counter = ");
-      Serial.println(counter);
-      #endif
-      send2Ints(*sendBuffer[counter][0], *sendBuffer[counter][1]);
-      *sendBuffer[counter][2] = 0;
+/*    case MQTT_RELAY:
+    {
+ //     mqttBuffer[MQTT_RELAY_NO].Data  = data;
+      break;
+    }
+    case MQTT_DIMMER:
+    {  
+  //    mqttBuffer[MQTT_DIMMER_NO].Data = data;
+      break;
+    }*/
+    default:
+    break;
   }
-  else
-  {
-      #ifdef DEBUG
-      Serial.println("Nothing to send");
-      #endif
-  }
+  // Free the memory
+  free(p);
 }
 
+void SendMqtt(){
+  static int counter = 0;
+  counter++;
+  char dataChar[6];
+  char topicChar[6];
+  itoa(counter, dataChar, 10);
+  itoa(MQTT_UPTIME, topicChar, 10);
+  client.publish(topicChar, dataChar);
+      
+  Serial.println("Sending MQTT");
+  Serial.println(topicChar);
+  Serial.println(dataChar);
+}

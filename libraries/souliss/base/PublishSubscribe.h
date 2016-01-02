@@ -25,7 +25,7 @@
 #ifndef PUBSUB_H
 #define PUBSUB_H
 
-/**************************************************************************
+/**************************************************************************/
 /*!
 	This macros connect a sender with a receiver that can do some action
 	once received the notification, example of use:
@@ -57,10 +57,10 @@
 #define	Sunny											0x0004,0x01
 #define	Raining											0x0004,0x02
 #define	Cloudy											0x0004,0x03
-
+#define Notify_GatewayAlive								0x0005,0x01
 
 // General macros for publish/subscribe method
-#define	publish(topic)								Souliss_BroadcastAction(memory_map, topic)
+#define	publish(topic)								Souliss_Publish(memory_map, topic)
 #define	m_publish(maddress, topic)					Souliss_MulticastPublish(maddress, memory_map, topic)
 #define	publishdata(topic, data, len)				Souliss_PublishData(memory_map, topic, data, len)
 #define	m_publishdata(maddress, topic, data, len)	Souliss_MulticastPublishData(maddress, memory_map, topic, data, len)

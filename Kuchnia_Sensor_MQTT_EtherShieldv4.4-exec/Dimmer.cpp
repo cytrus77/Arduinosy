@@ -25,9 +25,7 @@ dimmer::dimmer(int topic, int pin, int topicTimer, int topicTrigger, int topicSt
         m_sendFlagTrigger   = 0;
         m_sendFlagTimer     = 0;
 	pinMode(m_pin, OUTPUT);
-        registerToMqttTable(&m_mqttTopic,   &m_setValue, &m_sendFlagValue);
-        registerToMqttTable(&m_mqttTrigger, &m_trigger,  &m_sendFlagTrigger);
-        registerToMqttTable(&m_mqttTimer,   &m_timer,    &m_sendFlagTimer);
+
 }
 
 void dimmer::setDimmer()

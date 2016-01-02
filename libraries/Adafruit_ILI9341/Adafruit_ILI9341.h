@@ -23,11 +23,12 @@
  #include "WProgram.h"
 #endif
 #include <Adafruit_GFX.h>
-#ifdef ESP8266
-#include <pgmspace.h>
-#else
-#include <avr/pgmspace.h>
+#ifdef __AVR
+  #include <avr/pgmspace.h>
+#elif defined(ESP8266)
+  #include <pgmspace.h>
 #endif
+
 
 #define ILI9341_TFTWIDTH  240
 #define ILI9341_TFTHEIGHT 320
@@ -110,25 +111,14 @@
 #define ILI9341_GREENYELLOW 0xAFE5      /* 173, 255,  47 */
 #define ILI9341_PINK        0xF81F
 
-//#define ILI9341_USE_DIGITAL_WRITE
-//#define ILI9341_USE_NO_CS
-#ifdef ESP8266
-//not working
-//#define ILI9341_USE_HW_CS
-#endif
-
 class Adafruit_ILI9341 : public Adafruit_GFX {
 
  public:
-#ifndef ESP8266
+
   Adafruit_ILI9341(int8_t _CS, int8_t _DC, int8_t _MOSI, int8_t _SCLK,
 		   int8_t _RST, int8_t _MISO);
-#endif
-#if defined(USE_HW_CS) || defined(USE_NO_CS)
-  Adafruit_ILI9341(int8_t _DC, int8_t _RST = -1);
-#else
   Adafruit_ILI9341(int8_t _CS, int8_t _DC, int8_t _RST = -1);
-#endif
+
   void     begin(void),
            setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1),
            pushColor(uint16_t color),
@@ -142,51 +132,27 @@ class Adafruit_ILI9341 : public Adafruit_GFX {
            invertDisplay(boolean i);
   uint16_t color565(uint8_t r, uint8_t g, uint8_t b);
 
-  void  commandList(uint8_t *addr);
-
   /* These are not for current use, 8-bit protocol only! */
-   uint8_t  readdata(void),
-     readcommand8(uint8_t reg, uint8_t index = 0);
-   /*
-   uint16_t readcommand16(uint8_t);
-   uint32_t readcommand32(uint8_t);
-   void     dummyclock(void);
-   */
+  uint8_t  readdata(void),
+    readcommand8(uint8_t reg, uint8_t index = 0);
+  /*
+  uint16_t readcommand16(uint8_t);
+  uint32_t readcommand32(uint8_t);
+  void     dummyclock(void);
+  */  
 
-   void  writecommand(uint8_t c);
-   void  writedata(uint8_t d);
-   void  writedata(uint8_t * data, uint8_t size);
-   void  writeCmdData(uint8_t cmd, uint8_t * data, uint8_t size);
-
- private:
-
+  void     spiwrite(uint8_t),
+    writecommand(uint8_t c),
+    writedata(uint8_t d),
+    commandList(uint8_t *addr);
   uint8_t  spiread(void);
 
-
-#ifdef ESP8266
-  inline void spiwrite(uint8_t data);
-  inline void spiwrite16(uint16_t data);
-  inline void spiwriteBytes(uint8_t * data, uint8_t size);
-  inline void spiwritePattern(uint8_t * data, uint8_t size, uint32_t repeat);
-
-  inline void setAddrWindow_(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
-#else
-  void spiwrite(uint8_t);
-  void spiwrite16(uint16_t data);
-  void spiwriteBytes(uint8_t * data, uint8_t size);
-  void spiwritePattern(uint8_t * data, uint8_t size, uint8_t repeat);
-  void setAddrWindow_(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
-#endif
-
-  inline void spiCsHigh(void);
-  inline void spiCsLow(void);
-  inline void spiDcHigh(void);
-  inline void spiDcLow(void);
-
+ private:
   uint8_t  tabcolor;
-#ifndef ESP8266
+
+
+
   boolean  hwSPI;
-#endif
 #if defined (__AVR__) || defined(TEENSYDUINO)
   uint8_t mySPCR;
   volatile uint8_t *mosiport, *clkport, *dcport, *rsport, *csport;
@@ -196,13 +162,6 @@ class Adafruit_ILI9341 : public Adafruit_GFX {
     volatile RwReg *mosiport, *clkport, *dcport, *rsport, *csport;
     uint32_t  _cs, _dc, _rst, _mosi, _miso, _sclk;
     uint32_t  mosipinmask, clkpinmask, cspinmask, dcpinmask;
-#elif defined (ESP8266)
-#ifndef USE_HW_CS
-    int8_t  _cs;
-    uint32_t _csMask;
-#endif
-    int8_t  _dc, _rst;
-    uint32_t _dcMask, _rstMask;
 #endif
 };
 

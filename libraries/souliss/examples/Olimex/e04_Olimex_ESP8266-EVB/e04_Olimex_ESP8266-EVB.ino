@@ -10,7 +10,7 @@
 ***************************************************************************/
 
 // Configure the framework
-#include "bconf/MCU_ESP8266.h"              // Load the code directly on the ESP8266
+#include "bconf/Olimex_ESP8266EVB.h"              // Load the code directly on the ESP8266
 #include "conf/Gateway.h"                   // The main node is the Gateway, we have just one node
 #include "conf/DynamicAddressing.h"
 
@@ -22,6 +22,8 @@
 // Include framework code and libraries
 #include <ESP8266WiFi.h>
 #include <EEPROM.h>
+
+/*** All configuration includes should be above this line ***/ 
 #include "Souliss.h"
 
 // This identify the number GPIO0 of the Button

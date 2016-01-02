@@ -7,8 +7,8 @@
 #include "Kuchnia.h"
 #include <avr/wdt.h>
 
-//#define DEBUG 1
-//#define LOG 1
+#define DEBUG 1
+#define LOG 1
 
 void mqttConfig()
 {

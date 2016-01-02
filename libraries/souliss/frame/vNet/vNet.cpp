@@ -100,9 +100,10 @@
 // Routing and bridging tables
 static U16 route_table[VNET_ROUTING_TABLE] 		 = {0x0000};
 static U16 dest_route_table[VNET_ROUTING_TABLE]  = {0x0000};
+static U16 donot_route_table[VNET_ROUTING_TABLE] = {0x0000};
 static U16 multicast_groups[VNET_MULTICAST_SIZE] = {0x0000};
 
-static U8 last_media = 0;
+static U8 last_media = 0, broadcast_delay = VNET_BROADCAST_ENABLE;
 static U32 resettime = 0;
 
 U8 vNet_header[VNET_HEADER_SIZE] = {0x00};						// Header for output frame
@@ -142,6 +143,7 @@ void vNet_Init()
 	{
 		route_table[i] = 0x0000;
 		dest_route_table[i] = 0x0000;
+		donot_route_table[i] = 0x0000;
 	}
 	
 	// Set to zero
@@ -295,6 +297,20 @@ U8 vNet_Send(U16 addr, oFrame *frame, U8 len, U8 port)
 
 /**************************************************************************/
 /*!
+    Set the broadcast delay mode as per below table:
+
+		VNET_BROADCAST_DEFAULT
+		VNET_BROADCAST_ENABLE
+		VNET_BROADCAST_DISABLE
+*/
+/**************************************************************************/
+void vNet_BroadcastDelay(uint8_t mode)
+{
+	broadcast_delay = mode;
+}
+
+/**************************************************************************/
+/*!
     Send data to other devices over the Virtual Network
 */
 /**************************************************************************/
@@ -305,7 +321,7 @@ U8 vNet_SendBroadcast(oFrame *frame, U8 len, U8 port, U16 broadcast_addr)
 	for(U8 media=0;media<VNET_MEDIA_NUMBER;media++)
 	{		
 		// Avoid to flood the network
-		delay(VNET_BROADCAST_DELAY);
+		if(broadcast_delay==VNET_BROADCAST_ENABLE) delay(VNET_BROADCAST_DELAY);
 		
 		if(vnet_media_en[media])
 		{
@@ -1033,6 +1049,21 @@ U8 vNet_SetRoutingTable(U16 dest_path, U16 src_path, U8 index)
 	else
 		return VNET_FAIL;
 }
+
+/**************************************************************************/
+/*!
+    Set the entries for the routing tables
+*/
+/**************************************************************************/
+U8 vNet_SetDoNotRoutingTable(U16 addr, U8 index)
+{
+	if(index < VNET_ROUTING_TABLE)
+	{
+		donot_route_table[index] = addr;
+	}	
+	else
+		return VNET_FAIL;
+}
  
 /**************************************************************************/
 /*!
@@ -1048,6 +1079,13 @@ U8 vNet_MyMedia()
 	while(!vnet_media_en[i] && i < VNET_MEDIA_NUMBER - 1)
 		i++;
 	
+	// The VNET_MEDIA3 is always used together with VNET_MEDIA1 to 
+	// decouple the vNet address from the IP address. In this case 
+	// all the vNet traffic between nodes shall be transferred over
+	// VNET_MEDIA3
+	if((i==VNET_MEDIA1_ID) && vnet_media_en[VNET_MEDIA3_ID])
+		return VNET_MEDIA3_ID+1;
+
 	if(vnet_media_en[i])
 		return i+1;
 	else
@@ -1147,6 +1185,20 @@ void vNet_OutPath(U16 addr, U16 *routed_addr, U8 *media)
 		VNET_LOG(">\r\n");
 		#endif		
 		
+		// Search for devices that shall be reached
+		route_index = 0;
+		while ((route_index < VNET_ROUTING_TABLE) && (donot_route_table[route_index]) && (donot_route_table[route_index] != *routed_addr))	
+			route_index++;														   	
+		
+		// If the address is in the list, drop it
+		if(donot_route_table[route_index] == *routed_addr)
+		{
+			*routed_addr = 0x0000;
+
+			#if(VNET_DEBUG)
+			VNET_LOG(F("(vNet)<DONTROUTE>\r\n"));
+			#endif
+		}
 		#else	
 		// Route to my supernode
 			
@@ -1311,8 +1363,6 @@ U8 vNet_RoutingBridging(U8 media)
 	#endif
 	}
 }
-
-
 
 /**************************************************************************/
 /*!
@@ -1534,11 +1584,10 @@ void vNet_Reset()
     Set all radio interface in sleep mode, this doesn't work for WiFi radio
 */
 /**************************************************************************/
+#if (SLEEP_ENABLE && VNET_MEDIA2_ENABLE)
 void vNet_RadioSleep()
 {
-#if (VNET_MEDIA2_ENABLE)
 	vNet_RadioSleep_M2();
-#endif	
 }
 
 /**************************************************************************/
@@ -1548,8 +1597,6 @@ void vNet_RadioSleep()
 /**************************************************************************/
 void vNet_RadioWakeUp()
 {
-#if (VNET_MEDIA2_ENABLE)
 	vNet_RadioWakeUp_M2();
-#endif
 }
-
+#endif

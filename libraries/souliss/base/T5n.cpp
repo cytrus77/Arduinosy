@@ -24,24 +24,7 @@
 
 */
 
-/**************************************************************************
-/*!
-	Define the use of Typical 51 : Analog input, half-precision floating point
-*/	
 /**************************************************************************/
-void Souliss_SetT51(U8 *memory_map, U8 slot)
-{
-	memory_map[MaCaco_TYP_s + slot] = Souliss_T51;
-	memory_map[MaCaco_TYP_s + slot + 1] = Souliss_TRL;
-	
-	*(memory_map + MaCaco_IN_s + slot)      = 0x00;	// Use NaN as init value
-	*(memory_map + MaCaco_IN_s + slot + 1)  = 0xFE;	// Use NaN as init value
-	
-	*(memory_map + MaCaco_OUT_s + slot)     = 0x00;	// Use NaN as init value
-	*(memory_map + MaCaco_OUT_s + slot + 1) = 0xFE;	// Use NaN as init value
-}
-
-/**************************************************************************
 /*!
 	Typical 51 : Analog input, half-precision floating point
 	
@@ -79,7 +62,7 @@ U8 Souliss_Logic_T51(U8 *memory_map, U8 slot, const float deadband, U8 *trigger)
 		// If previously set as NaN or if there is a change greater than the deadband, update the output
 		if((((C8TO16(memory_map + MaCaco_IN_s + slot)) != (C8TO16(memory_map + MaCaco_OUT_s + slot))) && 
 				C8TO16(memory_map + MaCaco_OUT_s + slot) == 0xFE00) || 
-				(abs(m_in - m_out) > abs(deadband*m_in)))
+				(abs(m_in - m_out) > abs(deadband*m_out)))
 		{
 			// Store the new value
 			memory_map[MaCaco_OUT_s + slot] = memory_map[MaCaco_IN_s + slot];
@@ -97,7 +80,7 @@ U8 Souliss_Logic_T51(U8 *memory_map, U8 slot, const float deadband, U8 *trigger)
 	return 0;	
 }
 
-/**************************************************************************
+/**************************************************************************/
 /*!
 	Typical 5n : Pre-defined Analog Input	
 	
@@ -107,6 +90,7 @@ U8 Souliss_Logic_T51(U8 *memory_map, U8 slot, const float deadband, U8 *trigger)
 		in order to standardize the ranges and the user interface management.
 		
 		The following pre-defined analog inputs are available,
+			Souliss_Logic_T51 - Generic
 			Souliss_Logic_T52 - Temperature measure (-20, +50) °C
 			Souliss_Logic_T53 - Humidity measure (0, 100) %
 			Souliss_Logic_T54 - Light Sensor (0, 40) kLux

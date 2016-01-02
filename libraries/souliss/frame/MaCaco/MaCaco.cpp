@@ -70,6 +70,7 @@ U16 proposedaddress = 0;
 // buffer for temporary use
 U8 ipaddrs[4], cmd[7] = {0, MaCaco_NODES, MaCaco_SLOT, MaCaco_INMAXSUBSCR, MaCaco_IN_s, MaCaco_TYP_s, MaCaco_OUT_s};
 
+uint8_t runtimegateway=RuntimeGateway_RESET;
 extern bool addrsrv;
 #endif
 
@@ -105,11 +106,29 @@ void MaCaco_init(U8* memory_map)
 		subscr_battery[i] = 0;		
 		subscr_count[i] = 0;	
 	}	
-	
+
 	// Init the EEPROM
 	#if(USEEEPROM)
 	Store_Init();	
+
+	// Enable the Runtime Gateway option
+	if(Return_ID()==STORE__DEFAULTID)	
+	{
+		#if(MaCaco_USERMODE)
+		if(Return_GatewayMode()) runtimegateway=RuntimeGateway_SET;
+		#endif
+	}
+	else
+	{
+		Store_Clear();
+		Store_Commit();
+	}
 	#endif		
+
+	#if(MaCaco_USERMODE)
+	// Init the UserMode
+	UserMode_Init();
+	#endif	
 }
 
 /**************************************************************************/
@@ -332,26 +351,31 @@ U8 MaCaco_peruse(U16 addr, MaCaco_rx_data_t *rx, U8 *memory_map)
 	if ((rx->funcode == MaCaco_TYPREQ))
 	{
 		#if(MaCaco_SUBSCRIBERS)
-			U16 nodeoffest, len;
 			
-			// These points the local data
-			nodeoffest = MaCaco_TYP_s;
-			len = MaCaco_TYPLENGHT;				
-		
+			// If the node address isn't stored in the memory map, behave as SUSCRIBERS hasn't been set
+			if(C8TO16(memory_map + MaCaco_ADDRESSES_s) == 0)
+				return MaCaco_send(addr, MaCaco_TYPANS, rx->putin, rx->startoffset, rx->numberof, (rx->startoffset + memory_map));
+
 			// Record the request info
 			reqtyp_addr = addr;	
 			reqtyp_putin = rx->putin;
 			reqtyp_startoffset = rx->startoffset;
-			reqtyp_numberof = rx->numberof;
+			reqtyp_numberof = rx->numberof;			
+			
+			// If the user interface has requested typical from one node only, send the data directly
+			// or forward the request to the node that owns the data
+			if((rx->numberof == 1) && (rx->startoffset != 0))
+				return MaCaco_send(C8TO16(memory_map + MaCaco_ADDRESSES_s + 2*(rx->startoffset)), MaCaco_TYPREQ, 0, MaCaco_TYP_s, MaCaco_TYPLENGHT, 0x00);			
+			else if((rx->numberof == 1) && (rx->startoffset == 0))	// Returns typical for this node
+				return MaCaco_send(addr, MaCaco_TYPANS, rx->putin, rx->startoffset, MaCaco_TYPLENGHT, (MaCaco_TYP_s + memory_map));
 				
 			// Flag that the request shall be processed for all nodes, this is used at an upper level
 			reqtyp_times = MaCaco_NODES;		
 			lasttyp_addr=0;
-			
-			// In passthrough mode data from other nodes are not stored, at this time we can send out only local
-			// data, then when other nodes will send back data these will be bridged to the User Interface
-			if(rx->putin == 0) 
-				return MaCaco_send(addr, MaCaco_TYPANS, rx->putin, rx->startoffset, len, (nodeoffest + memory_map));
+
+			// If the user interface has requested typical from multiple node, send the data from this node
+			// the GetTypicals from the main application will forward the request to other nodes
+			return MaCaco_send(addr, MaCaco_TYPANS, rx->putin, rx->startoffset, MaCaco_TYPLENGHT, (MaCaco_TYP_s + memory_map));
 		#else
 			return MaCaco_send(addr, MaCaco_TYPANS, rx->putin, rx->startoffset, rx->numberof, (rx->startoffset + memory_map));
 		#endif
@@ -380,7 +404,7 @@ U8 MaCaco_peruse(U16 addr, MaCaco_rx_data_t *rx, U8 *memory_map)
 			
 		#if(MaCaco_USERMODE)	
 			// If the number of nodes wasn't specified
-			if(!(rx->numberof) && (rx->funcode == MaCaco_STATEREQ))
+			if(!(rx->numberof) && (rx->funcode == MaCaco_STATEREQ) && (C8TO16(memory_map + MaCaco_ADDRESSES_s)))
 			{
 				// Count the number of nodes
 				U8 nodes = 0;	
@@ -455,7 +479,7 @@ U8 MaCaco_peruse(U16 addr, MaCaco_rx_data_t *rx, U8 *memory_map)
 		
 	#if(MaCaco_USERMODE && DYNAMICADDRESSING)	
 	// record a join request
-	if ((rx->funcode == MaCaco_JOINNETWORK) || (rx->funcode == MaCaco_JOINANDRESET))
+	if (((rx->funcode == MaCaco_JOINNETWORK) || (rx->funcode == MaCaco_JOINANDRESET)) && (C8TO16(memory_map + MaCaco_ADDRESSES_s)))
 	{			
 		// look for a non used address register
 		U16 nodes=0;
@@ -473,7 +497,9 @@ U8 MaCaco_peruse(U16 addr, MaCaco_rx_data_t *rx, U8 *memory_map)
 			// store the new values	
 			#if(USEEEPROM)
 			Store_ID(STORE__DEFAULTID);
-			Store_PeerAddresses((memory_map + MaCaco_ADDRESSES_s), MaCaco_NODES);
+			Store_PeerAddresses((memory_map + MaCaco_ADDRESSES_s + 2), MaCaco_NODES - 1);	// The first two bytes
+																							// is the Local (Gateway)
+																							// address, that's why we skip
 			Store_Commit();
 			
 			#if (SOULISS_DEBUG)
@@ -530,8 +556,8 @@ U8 MaCaco_peruse(U16 addr, MaCaco_rx_data_t *rx, U8 *memory_map)
 	#endif
 
 	#if(DYNAMICADDRESSING && VNET_MEDIA1_ENABLE && MaCaco_USERMODE)	
-	// set an IP address at runtime
-	if (addrsrv && (rx->funcode == MaCaco_SETIP))
+	// set an IP address at runtime, only if a top layer has set the node own address as gateway
+	if (addrsrv && (rx->funcode == MaCaco_SETIP) && (C8TO16(memory_map + MaCaco_ADDRESSES_s)))
 	{	
 		// the payload contains the IPv4 address in the first four bytes
 		// then the subnetmask and gateway IP
@@ -559,7 +585,7 @@ U8 MaCaco_peruse(U16 addr, MaCaco_rx_data_t *rx, U8 *memory_map)
 	
 	#if(MaCaco_USERMODE && VNET_MEDIA1_ENABLE)	
 	// answer to a database structure request
-	if (rx->funcode == MaCaco_DBSTRUCTREQ)
+	if ((rx->funcode == MaCaco_DBSTRUCTREQ) && (C8TO16(memory_map + MaCaco_ADDRESSES_s)))
 	{		
 		// Count the number of nodes
 		U8 nodes = 0;	
@@ -579,7 +605,7 @@ U8 MaCaco_peruse(U16 addr, MaCaco_rx_data_t *rx, U8 *memory_map)
 	}
 	
 	// answer to a discover request
-	if (rx->funcode == MaCaco_DISCOVERREQ)
+	if ((rx->funcode == MaCaco_DISCOVERREQ) && (C8TO16(memory_map + MaCaco_ADDRESSES_s)))
 	{		
 		// in the answer we include the IP address
 		eth_GetIP(ipaddrs);
@@ -591,7 +617,7 @@ U8 MaCaco_peruse(U16 addr, MaCaco_rx_data_t *rx, U8 *memory_map)
 	
 	#if(DYNAMICADDRESSING && (MaCaco_USERMODE))	
 	// answer to a dynamic addressing request
-	if (rx->funcode == MaCaco_DINADDRESSREQ)
+	if ((rx->funcode == MaCaco_DINADDRESSREQ) && (C8TO16(memory_map + MaCaco_ADDRESSES_s)))
 	{	
 		// Process new and yet issued requests
 		if ((randomkeyid == 0) || (randomkeyid == rx->putin))
@@ -643,6 +669,9 @@ U8 MaCaco_peruse(U16 addr, MaCaco_rx_data_t *rx, U8 *memory_map)
 				U8 tryagain=0, trying=0;
 				do
 				{
+					// we ran across all node addresses once
+					tryagain=0;	
+
 					// verify the address against all nodes
 					for(nodes=0;nodes<MaCaco_NODES;nodes++)
 					{
@@ -650,7 +679,7 @@ U8 MaCaco_peruse(U16 addr, MaCaco_rx_data_t *rx, U8 *memory_map)
 						if((nodeaddress & DYNAMICADDR_SUBNETMASK) == ((C8TO16(memory_map + MaCaco_ADDRESSES_s + 2*nodes)) && DYNAMICADDR_SUBNETMASK))
 						{
 							nodeaddress+=((~DYNAMICADDR_SUBNETMASK)+1);	//move to the next subnet					
-							tryagain=1;
+							tryagain=1;									// repeat the check
 							trying++;
 						}
 					}	
@@ -725,7 +754,7 @@ U8 MaCaco_peruse(U16 addr, MaCaco_rx_data_t *rx, U8 *memory_map)
 	
 	#if(DYNAMICADDRESSING && (MaCaco_USERMODE || VNET_SUPERNODE))	
 	// answer to a subnet request
-	if (rx->funcode == MaCaco_SUBNETREQ)
+	if ((rx->funcode == MaCaco_SUBNETREQ) && (C8TO16(memory_map + MaCaco_ADDRESSES_s)))
 	{	
 		
 		// the startoffset is used as media number
@@ -816,6 +845,9 @@ U8 MaCaco_peruse(U16 addr, MaCaco_rx_data_t *rx, U8 *memory_map)
 		// force by typical logic number
 		if((rx->funcode == MaCaco_TYP) || (rx->funcode == MaCaco_FORCETYP))
 		{
+			// Disable the broadcast delay
+			if(VNET_BROADCAST_DEFAULT) vNet_BroadcastDelay(VNET_BROADCAST_DISABLE);
+
 			// identify if the command is issued for a typical or a typical class
 			if((rx->startoffset & 0x0F) == 0x00)
 				typ_mask = 0xF0;	// we look only to the typical class value
@@ -830,8 +862,12 @@ U8 MaCaco_peruse(U16 addr, MaCaco_rx_data_t *rx, U8 *memory_map)
 
 			// force typical on the remote node
 			#if(MaCaco_USERMODE)
-			if(rx->funcode == MaCaco_TYP)	MaCaco_send(0xFFFF, MaCaco_TYP, 0, rx->startoffset, rx->numberof, rx->data);
+			if((rx->funcode == MaCaco_TYP) && (C8TO16(memory_map + MaCaco_ADDRESSES_s)))
+				MaCaco_send(0xFFFF, MaCaco_TYP, 0, rx->startoffset, rx->numberof, rx->data);
 			#endif
+
+			// Enable the broadcast delay
+			if(VNET_BROADCAST_DEFAULT) vNet_BroadcastDelay(VNET_BROADCAST_ENABLE);
 									
 			return MaCaco_FUNCODE_OK;
 		}	
@@ -888,8 +924,11 @@ U8 MaCaco_peruse(U16 addr, MaCaco_rx_data_t *rx, U8 *memory_map)
 				return MaCaco_FUNCODE_OK;
 			}
 			else	// Data shall be sent to a remote node
-				return MaCaco_send(C8TO16(memory_map+MaCaco_ADDRESSES_s+rx->startoffset*2), MaCaco_FORCEREGSTR, 0, MaCaco_IN_s, rx->numberof, rx->data);
-				
+			{
+				if(C8TO16(memory_map + MaCaco_ADDRESSES_s))
+					return MaCaco_send(C8TO16(memory_map+MaCaco_ADDRESSES_s+rx->startoffset*2), MaCaco_FORCEREGSTR, 0, MaCaco_IN_s, rx->numberof, rx->data);
+			}
+	
 		break;
 		#endif
 		
@@ -898,7 +937,7 @@ U8 MaCaco_peruse(U16 addr, MaCaco_rx_data_t *rx, U8 *memory_map)
 		case(MaCaco_TYPANS) :
 			// This information is redirected to the User Interface and stored
 			// only if data persistence is activated
-				
+	
 			// Identify the node index
 			U8 nodeindex;
 			for(nodeindex=MaCaco_LOCNODE+1; nodeindex<MaCaco_NODES ; nodeindex++)
@@ -1651,3 +1690,15 @@ U8 MaCaco_GetLastIndex(U8 *memory_map, U8 nodenumber)
 	// Return the index
 	return i;
 }
+
+/**************************************************************************/
+/*!
+    Return if the node is set as runtime gateway
+*/
+/**************************************************************************/
+#if(MaCaco_USERMODE)
+U8 MaCaco_IsRuntimeGateway()
+{
+	return runtimegateway;
+}
+#endif
