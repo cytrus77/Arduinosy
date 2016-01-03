@@ -6,11 +6,12 @@ class uptime
 private:
 	int m_mqttTopic;
 	int m_uptime;
-	int m_sendFlag;
+	bool m_sendFlag;
 
 public:
 	uptime(int topic);
 	void getUptime(void);
+  void sendIfChanged();
 };
 
 #endif
