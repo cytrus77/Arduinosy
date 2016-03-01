@@ -95,7 +95,6 @@ void mqttData(void* response)
 
 void mqttPublished(void* response)
 {
-
 }
 
 #endif

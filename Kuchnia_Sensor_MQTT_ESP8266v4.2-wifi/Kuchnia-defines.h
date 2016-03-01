@@ -11,7 +11,7 @@
 #define MQTT_CONFIG_END    9999
 #define MQTT_UPTIME        1001
 
-//#define DEBUG 1
-//#define LOG 1
+#define DEBUG 1
+#define LOG 1
 
 #endif
