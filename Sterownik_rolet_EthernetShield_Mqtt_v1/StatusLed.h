@@ -14,14 +14,15 @@ private:
   bool m_state;
   int  m_mode;
   int  m_pin;
+  unsigned long m_timer;
 	
 public:
-	statusled(int pin, led_mode mode);
+  statusled(int pin, led_mode mode);
+  void turnOn();
   void turnOff();
-	void setState(bool state, bool direction);
-  int  getTopic();
-	bool getState();
-  void checkTimeout();
+  void setMode(led_mode mode);
+  bool getState();
+  void checkTimer();
 };
 
 #endif
