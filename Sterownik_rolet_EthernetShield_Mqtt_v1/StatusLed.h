@@ -3,6 +3,7 @@
 
 class statusled
 {
+public:
 enum led_mode
 {
   off     = 0,
@@ -15,6 +16,7 @@ private:
   int  m_mode;
   int  m_pin;
   unsigned long m_timer;
+  unsigned long m_period;
 	
 public:
   statusled(int pin, led_mode mode);

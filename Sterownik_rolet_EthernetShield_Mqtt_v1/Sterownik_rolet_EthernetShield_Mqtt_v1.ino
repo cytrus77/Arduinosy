@@ -8,6 +8,7 @@
 #include "Defines.h"
 #include "Uptime.h"
 #include "Roller.h"
+#include "StatusLed.h"
 
 #define DEBUG 1
 
@@ -23,6 +24,7 @@ EthernetClient ethClient;
 PubSubClient client(server, 1883, callback, ethClient);
 
 //Sensor Vars
+statusled StatusLed(STATUSLEDPIN, statusled::off);
 uptime Uptime(MQTT_UPTIME);
 roller Roller1(MQTT_ROLETA1, ROLETA1UPPIN, ROLETA1DOWNPIN);
 roller Roller2(MQTT_ROLETA2, ROLETA2UPPIN, ROLETA2DOWNPIN);
@@ -60,11 +62,13 @@ void loop() {
   {
     Uptime.getUptime();
     Uptime.sendIfChanged();
+    StatusLed.setMode(statusled::online);
   }
   else
   {
      allRollerOff();
      mqttConnect();
+     StatusLed.setMode(statusled::offline);
   }
 }
 /////////////////////////////////////////////END MAIN LOOP/////////////////////////////////////////////////
@@ -72,6 +76,7 @@ void loop() {
 void TimerLoop()
 {
   allRollerCheckTimeout();
+  StatusLed.checkTimer();
 }
 
 void allRollerOff()

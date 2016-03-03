@@ -10,14 +10,15 @@
 statusled::statusled(int pin, led_mode mode)
 {
   m_state  = OFF;
-  m_mode   = off;
+  m_mode   = mode;
   m_pin    = pin;
   pinMode(m_pin, OUTPUT);
   digitalWrite(m_pin, m_state);
-  m_timer = 0;
+  m_timer  = 0;
+  m_period = 1;
 }
 
-void turnOn()
+void statusled::turnOn()
 {
   if (m_state != ON)
   {
@@ -26,7 +27,7 @@ void turnOn()
   }
 }
   
-void turnOff()
+void statusled::turnOff()
 {
   if (m_state != OFF)
   {
@@ -35,36 +36,52 @@ void turnOff()
   }
 }
 
-void setMode(led_mode mode)
+void statusled::setMode(led_mode mode)
 {
   if (m_mode != mode)
   {
     m_mode = mode;
+
+    switch (m_mode)
+    {
+      case off:
+      m_period = 1;
+      break;
+    
+      case offline:
+      m_period = 2 * 1000000 / INT_TIMER_PERIOD;
+      break;
+    
+      case online:
+      m_period = 5 * 100000 / INT_TIMER_PERIOD;
+      break;
+    
+      default:
+      break;
+    }
   }
 }
 
-bool getState()
+bool statusled::getState()
 {
   return m_state;
 }
 
-void checkTimer()
-{
-  switch (m_mode)
+void statusled::checkTimer()
+{ 
+  if(m_timer == 0)
   {
-    case off:
-    
-    break;
-    
-    case offline:
-    
-    break;
-    
-    case online:
-    
-    break;
-    
-    default:
-    break;
+    if (m_state == ON || m_mode == off)
+    {
+      turnOff();
+    }
+    else
+    {
+      turnOn();
+    }
+
+    m_timer = m_period;
   }
+
+  --m_timer;
 }
