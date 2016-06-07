@@ -12,13 +12,22 @@
 
 #define DEBUG 1
 
+
 void ftoa(float Value, char* Buffer);
 void callback(char* topic, byte* payload, unsigned int length);
 
 // Update these with values suitable for your network.
-byte mac[]    = {  0xBA, 0xCA, 0xF1, 0xFA, 0x00, 0x58 };
-byte server[] = { 192, 168, 0, 142 };
-byte ip[]     = { 192, 168, 0, 252 };
+#ifdef KUCHNIA
+byte mac[]    = {  0xBA, 0xCA, 0xF1, 0xFA, 0x11, 0x01 };  // Kuchnia
+byte ip[]     = { 192, 168, 17, 31 };                     // Kuchnia
+#endif
+#ifdef PODDASZE
+byte mac[]    = {  0xBA, 0xCA, 0xF1, 0xFA, 0x11, 0x02 };  // Poddasze
+byte ip[]     = { 192, 168, 17, 32 };                     // Poddasze
+#endif
+
+byte server[] = { 192, 168, 17, 30 };
+long lastMqttReconnectAttempt = 0;
 
 EthernetClient ethClient;
 PubSubClient client(server, 1883, callback, ethClient);
@@ -29,11 +38,16 @@ uptime Uptime(MQTT_UPTIME);
 roller Roller1(MQTT_ROLETA1, ROLETA1UPPIN, ROLETA1DOWNPIN);
 roller Roller2(MQTT_ROLETA2, ROLETA2UPPIN, ROLETA2DOWNPIN);
 roller Roller3(MQTT_ROLETA3, ROLETA3UPPIN, ROLETA3DOWNPIN);
+#ifdef PODDASZE
 roller Roller4(MQTT_ROLETA4, ROLETA4UPPIN, ROLETA4DOWNPIN);
 roller Roller5(MQTT_ROLETA5, ROLETA5UPPIN, ROLETA5DOWNPIN);
 
 roller* RollerTab[] = {&Roller1, &Roller2, &Roller3, &Roller4, &Roller5};
+#endif
 
+#ifdef KUCHNIA
+roller* RollerTab[] = {&Roller1, &Roller2, &Roller3};
+#endif
 /////////////////////////////////////////////START SETUP/////////////////////////////////////////////////
 void setup() {
   Serial.begin(19200);
@@ -49,26 +63,43 @@ void setup() {
   //Smooth dimming interrupt init
   Timer1.initialize(INT_TIMER_PERIOD);
   Timer1.attachInterrupt(TimerLoop);
+  StatusLed.setMode(statusled::poweron);
   wdt_enable(WDTO_4S);
+  lastMqttReconnectAttempt = 0;
 }
 /////////////////////////////////////////////END SETUP/////////////////////////////////////////////////
 
 /////////////////////////////////////////////START MAIN LOOP/////////////////////////////////////////////////
 void loop() {  
   wdt_reset();
-  client.loop();
 
   if(client.connected())
   {
+    client.loop();
     Uptime.getUptime();
     Uptime.sendIfChanged();
     StatusLed.setMode(statusled::online);
   }
   else
   {
-     allRollerOff();
-     mqttConnect();
+     #ifdef DEBUG
+     Serial.println("Disconnected");
+     #endif
+     
      StatusLed.setMode(statusled::offline);
+     
+     long now = millis();
+     if (now - lastMqttReconnectAttempt > 3000) 
+     {
+        lastMqttReconnectAttempt = now;
+        // Attempt to reconnect
+        if (mqttConnect()) 
+        {
+           lastMqttReconnectAttempt = 0;
+        }
+     }
+     
+     allRollerOff();
   }
 }
 /////////////////////////////////////////////END MAIN LOOP/////////////////////////////////////////////////
@@ -195,9 +226,14 @@ void sendMqtt(int topic, float value)
   Serial.println(dataChar);
 }
 
-void mqttConnect()
+boolean mqttConnect()
 {
-  if (client.connect("Roller", "admin", "Isb_C4OGD4c3")) 
+  #ifdef KUCHNIA
+  if (client.connect("Kuchnia", "admin_kuchnia", "Isb_C4OGD4c1")) // Kuchnia
+  #endif
+  #ifdef PODDASZE
+  if (client.connect("Poddasze", "admin_poddasze", "Isb_C4OGD4c2")) // Poddasze
+  #endif
   {
     Serial.println("Connected");
     delay(2000);
@@ -214,6 +250,8 @@ void mqttConnect()
     itoa(MQTT_ALL_ROLETS, topicChar, 10);
     client.subscribe(topicChar);
   }
+
+  return client.connected();
 }
 
 /**************************************************

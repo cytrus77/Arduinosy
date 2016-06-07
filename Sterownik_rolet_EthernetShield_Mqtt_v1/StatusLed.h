@@ -7,8 +7,9 @@ public:
 enum led_mode
 {
   off     = 0,
-  offline = 1,
-  online  = 2
+  poweron = 1,
+  offline = 2,
+  online  = 3
 };
   
 private:

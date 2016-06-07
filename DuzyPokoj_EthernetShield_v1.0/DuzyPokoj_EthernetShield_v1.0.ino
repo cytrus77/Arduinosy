@@ -67,7 +67,7 @@ void setup() {
   wdt_enable(WDTO_8S);
 }
 /////////////////////////////////////////////END SETUP/////////////////////////////////////////////////
-      long dht11time = 0;
+
 /////////////////////////////////////////////START MAIN LOOP/////////////////////////////////////////////////
 void loop() {
   wdt_reset();
@@ -95,7 +95,6 @@ void loop() {
 
     if (dht22_flag)
     { 
-      long start = millis();
       int chk = DHT.read11(DHT11PIN);
       static unsigned short faileCounter = 0;
       if (chk == DHTLIB_OK)
@@ -108,13 +107,6 @@ void loop() {
         sendMqtt(MQTT_HUMIDEX,  (int)DHT.humidity);
         faileCounter = 0;
         dht22_flag = false;
-        long end_time = millis();
-        dht11time = end_time - start;
-        {
-        debugSerial.print("DHT11 time = ");
-        debugSerial.print(dht11time);
-        debugSerial.println("ms");
-        }
       }
       else
       {
@@ -246,24 +238,31 @@ void callback(char* topic, byte* payload, unsigned int length) {
     {
       ledDimmer.setValue(data);
     }
-    break;
+      break;
     case MQTT_DIMMER_TRIGGER:
     {
       ledDimmer.setTrigger(data);
     }
-    break;
+      break;
     case MQTT_DIMMER_TIMEOUT:
     {
       ledDimmer.setTimeout(data);
     }
+      break;
     case MQTT_DIMMER_PIR:
     {
-      if (data) ledDimmer.setPirFlag(true);
-      else ledDimmer.setPirFlag(false);
+      if (data) 
+      {
+        ledDimmer.setPirFlag(true);
+      }
+      else 
+      {
+        ledDimmer.setPirFlag(false);
+      }
     }
-    break;
+      break;
     default:
-    break;
+      break;
   }
   // Free the memory
   free(p);

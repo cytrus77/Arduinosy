@@ -56,14 +56,25 @@ void dimmer::setTimeout(int timeout)
     m_timeout = timeout;
     return;
   }
-  if (timeout < 0)            m_timeout = 0;
-  else if (timeout > 100)     m_timeout = 100;
+  
+  if (timeout < 0)         
+  {
+    m_timeout = 0;
+  }
+  else if (timeout > 100)     
+  {
+    m_timeout = 100;
+  }
 }
 
 void dimmer::checkPir()
 {
   resetTimer();
-  if (m_currentLight < m_trigger && !m_setValue && m_pir_flag) setValue(50);
+  
+  if ((m_currentLight < m_trigger) && !m_setValue && m_pir_flag) 
+  {
+    setValue(50);
+  }
 }
 
 void dimmer::checkTimeout()
