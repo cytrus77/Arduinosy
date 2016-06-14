@@ -5,37 +5,36 @@
 #endif
 
 #include "Dimmer.h"
-#include "Defines.h"
 
 dimmer::dimmer(int pin)
 {
-	m_currentValue = 0;
+  m_currentValue = 0;
   m_setValue     = 0;
   m_trigger      = 50;
-	m_timeout      = 60;
-	m_pin          = pin;
+  m_timeout      = 60;
+  m_pin          = pin;
   m_pir_flag     = true;
-	pinMode(m_pin, OUTPUT);
+  pinMode(m_pin, OUTPUT);
 }
 
 void dimmer::setDimmer()
 {
-	if(m_currentValue != m_setValue)
-	{
-		if		(m_currentValue < m_setValue) ++m_currentValue;
-		else if	(m_currentValue > m_setValue) --m_currentValue;
-	  
-	  analogWrite(m_pin, m_currentValue*m_currentValue/255);
-	}
+  if(m_currentValue != m_setValue)
+  {
+  if (m_currentValue < m_setValue)      ++m_currentValue;
+  else if (m_currentValue > m_setValue) --m_currentValue;
+
+  analogWrite(m_pin, m_currentValue*m_currentValue/255);
+  }
 }
 
 void dimmer::setValue(int value)
 {
-	int old_value = m_setValue;
-	if(value >= 0 && value <= 100) m_setValue = map(value, 0, 100, 0, 255);
-	else if (value < 0)            m_setValue = 0;
-	else if (value > 100)          m_setValue = 255;
-	resetTimer();
+  int old_value = m_setValue;
+  if(value >= 0 && value <= 100) m_setValue = map(value, 0, 100, 0, 255);
+  else if (value < 0)            m_setValue = 0;
+  else if (value > 100)          m_setValue = 255;
+  resetTimer();
 }
 
 void dimmer::setTrigger(int trigger)

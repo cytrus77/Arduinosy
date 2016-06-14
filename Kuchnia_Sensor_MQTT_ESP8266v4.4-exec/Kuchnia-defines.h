@@ -5,12 +5,6 @@
 #define TRIGERVALUE        50       // default value for photo trigger [%]
 #define TIMERVALUE         120      // default value of timer [sec]
 #define MEASUREPERIOD      100      // in miliseconds
-#define SENSORSENDPERIOD   30       // period for send sensor value [sec]
-
-#define ANALOGTYPE         0
-#define DIGITALTYPE        1
-#define INVERTEDSCALE      1
-#define NORMALSCALE        0
 
 #define MQTTCONFIG         0
 #define MQTTNORMAL         1

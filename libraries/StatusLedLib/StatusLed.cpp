@@ -5,9 +5,8 @@
 #endif
 
 #include "StatusLed.h"
-#include "Defines.h"
 
-statusled::statusled(int pin, led_mode mode)
+statusled::statusled(int pin, led_mode mode, unsigned long timer_duty_cycle)
 {
   m_state  = OFF;
   m_mode   = mode;
@@ -16,6 +15,7 @@ statusled::statusled(int pin, led_mode mode)
   digitalWrite(m_pin, m_state);
   m_timer  = 0;
   m_period = 0;
+  m_timer_duty_cycle = timer_duty_cycle;
 }
 
 void statusled::turnOn()
@@ -50,11 +50,11 @@ void statusled::setMode(led_mode mode)
       break;
     
       case offline:
-      m_period = 2 * 1000000 / INT_TIMER_PERIOD;
+      m_period = 2 * 1000000 / m_timer_duty_cycle;
       break;
     
       case online:
-      m_period = 5 * 100000 / INT_TIMER_PERIOD;
+      m_period = 5 * 100000 / m_timer_duty_cycle;
       break;
     
       default:

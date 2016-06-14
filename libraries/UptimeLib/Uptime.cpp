@@ -19,7 +19,7 @@ uptime::uptime(int topic)
 void uptime::getUptime()
 {
 	int old_value = m_uptime;
-	m_uptime = millis()/60000;
+	m_uptime = (int)(millis()/60000);
 	if(old_value != m_uptime)
 	{
 		m_sendFlag = true;

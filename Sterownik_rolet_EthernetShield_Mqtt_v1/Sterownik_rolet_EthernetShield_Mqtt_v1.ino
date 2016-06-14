@@ -8,7 +8,9 @@
 #include "Defines.h"
 #include "Uptime.h"
 #include "Roller.h"
+#include "Dimmer.h"
 #include "StatusLed.h"
+#include "Czujnik.h"
 
 #define DEBUG 1
 
@@ -33,26 +35,26 @@ EthernetClient ethClient;
 PubSubClient client(server, 1883, callback, ethClient);
 
 //Sensor Vars
-statusled StatusLed(STATUSLEDPIN, statusled::off);
+statusled StatusLed(STATUSLEDPIN, statusled::off, INT_TIMER_PERIOD);
 uptime Uptime(MQTT_UPTIME);
-roller Roller1(MQTT_ROLETA1, ROLETA1UPPIN, ROLETA1DOWNPIN);
-roller Roller2(MQTT_ROLETA2, ROLETA2UPPIN, ROLETA2DOWNPIN);
-roller Roller3(MQTT_ROLETA3, ROLETA3UPPIN, ROLETA3DOWNPIN);
+roller Roller1(MQTT_ROLETA1, ROLETA1UPPIN, ROLETA1DOWNPIN, ROLLER_TIMEOUT);
+roller Roller2(MQTT_ROLETA2, ROLETA2UPPIN, ROLETA2DOWNPIN, ROLLER_TIMEOUT);
+roller Roller3(MQTT_ROLETA3, ROLETA3UPPIN, ROLETA3DOWNPIN, ROLLER_TIMEOUT);
 #ifdef PODDASZE
-roller Roller4(MQTT_ROLETA4, ROLETA4UPPIN, ROLETA4DOWNPIN);
-roller Roller5(MQTT_ROLETA5, ROLETA5UPPIN, ROLETA5DOWNPIN);
+roller Roller4(MQTT_ROLETA4, ROLETA4UPPIN, ROLETA4DOWNPIN, ROLLER_TIMEOUT);
+roller Roller5(MQTT_ROLETA5, ROLETA5UPPIN, ROLETA5DOWNPIN, ROLLER_TIMEOUT);
 
 roller* RollerTab[] = {&Roller1, &Roller2, &Roller3, &Roller4, &Roller5};
 #endif
 
 #ifdef KUCHNIA
+dimmer ledDimmer(DIMMERPIN);
 roller* RollerTab[] = {&Roller1, &Roller2, &Roller3};
 #endif
 /////////////////////////////////////////////START SETUP/////////////////////////////////////////////////
 void setup() {
-  Serial.begin(19200);
-  
   #ifdef DEBUG
+  Serial.begin(19200);
   Serial.println("setup()");
   #endif
   

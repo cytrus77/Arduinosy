@@ -5,14 +5,14 @@
 #endif
 
 #include "Roller.h"
-#include "Defines.h"
 
-roller::roller(int topic, int pin_up, int pin_down)
+roller::roller(int topic, int pin_up, int pin_down, unsigned long timeout_set)
 {
   m_state = OFF;
   m_topic = topic;
   m_pin_up   = pin_up;
   m_pin_down = pin_down;
+  m_roller_timeout = timeout_set;
   pinMode(m_pin_up, OUTPUT);
   pinMode(m_pin_down, OUTPUT);
   digitalWrite(m_pin_up, m_state);
@@ -21,7 +21,7 @@ roller::roller(int topic, int pin_up, int pin_down)
 
 void roller::up()
 {
-  m_timeout_timer = ROLLER_TIMEOUT;
+  m_timeout_timer = m_roller_timeout;
   
   if (!((m_direction == UP) && (m_state == ON)))
   {
@@ -35,7 +35,7 @@ void roller::up()
 
 void roller::down()
 {
-  m_timeout_timer = ROLLER_TIMEOUT;
+  m_timeout_timer = m_roller_timeout;
 
   if (!((m_direction == DOWN) && (m_state == ON)))
   {

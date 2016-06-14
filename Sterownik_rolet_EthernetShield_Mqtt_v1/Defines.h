@@ -8,11 +8,6 @@
 #define MAX_ROLLER_TIMEOUT 30  // in secunds
 #define INT_TIMER_PERIOD   100000 // in us
 #define ROLLER_TIMEOUT     MAX_ROLLER_TIMEOUT * 1000000 / INT_TIMER_PERIOD
-#define UP                 true
-#define DOWN               false
-#define ON                 false
-#define OFF                true
-
 
 
 #ifdef KUCHNIA
@@ -23,6 +18,7 @@
 #define MQTT_PIRSENSOR     9
 #define MQTT_LIGHTSENSOR   9
 #define MQTT_GASSENSOR     9
+#define MQTT_FLOODSENSOR   9
 
 //Subscribe
 #define MQTT_ROLETA2       9501   // KUCHNIA FRONT
@@ -45,7 +41,7 @@
 //#define SCKforEthernet     13 - reserved
 #define ROLETA3UPPIN       A0
 #define ROLETA3DOWNPIN     A1
-//#define NOTUSEDPIN         A2
+#define FLOODSENSORPIN     A2
 #define LIGHTSENSORPIN     A3
 #define GASSENSORPIN       A4
 #define STATUSLEDPIN       A5

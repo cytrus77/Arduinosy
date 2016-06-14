@@ -1,6 +1,9 @@
 #ifndef STATUSLED_H
 #define STATUSLED_H
 
+#define ON   false
+#define OFF  true
+
 class statusled
 {
 public:
@@ -18,9 +21,10 @@ private:
   int  m_pin;
   unsigned long m_timer;
   unsigned long m_period;
-	
+  unsigned long m_timer_duty_cycle;
+
 public:
-  statusled(int pin, led_mode mode);
+  statusled(int pin, led_mode mode, unsigned long timer_duty_cycle);
   void turnOn();
   void turnOff();
   void setMode(led_mode mode);

@@ -27,9 +27,9 @@ bool light_flag    = true;
 bool pressure_flag = true;
 
 // Update these with values suitable for your network.
-byte mac[]    = {  0xDE, 0xAD, 0xC1, 0xF0, 0x00, 0x01 };
+byte mac[]    = {  0xDE, 0xAD, 0xC1, 0xF0, 0x22, 0x01 };
 byte server[] = { 192, 168, 0, 142 };
-byte ip[]     = { 192, 168, 0, 220 };
+byte ip[]     = { 192, 168, 0, 224 };
 
 #ifdef DEBUG
 SoftwareSerial debugSerial(DEBUGRXPIN, DEBUGTXPIN); // RX, TX
@@ -47,6 +47,7 @@ dimmer ledDimmer(MQTT_DIMMER, DIMMERPIN);
 float windBuffer[10];
 short windBufferCounter = 0;
 float windSpeed = 0;
+long lastMqttReconnectAttempt = 0;
 
 /////////////////////////////////////////////START SETUP/////////////////////////////////////////////////
 void setup() {
@@ -73,6 +74,7 @@ void setup() {
   Timer1.initialize(TIMER0PERIOD);
   Timer1.attachInterrupt(TimerLoop);
   wdt_enable(WDTO_8S);
+  lastMqttReconnectAttempt = 0;
 }
 /////////////////////////////////////////////END SETUP/////////////////////////////////////////////////
 
@@ -169,7 +171,17 @@ void loop() {
      #ifdef DEBUG
      debugSerial.println("Disconnected");
      #endif
-     mqttConnect();
+
+     long now = millis();
+     if (now - lastMqttReconnectAttempt > 3000) 
+     {
+        lastMqttReconnectAttempt = now;
+        // Attempt to reconnect
+        if (mqttConnect()) 
+        {
+           lastMqttReconnectAttempt = 0;
+        }
+     }
   }
 }
 /////////////////////////////////////////////END MAIN LOOP/////////////////////////////////////////////////
@@ -306,18 +318,21 @@ void sendMqtt(int topic, float value)
   #endif
 }
 
-void mqttConnect()
+boolean mqttConnect()
 {
-  if (client.connect("DVES_duino", "admin", "Isb_C4OGD4c3")) 
+  if (client.connect("Stacja_pogodowa", "admin_stacja", "Isb_C4OGD4c3")) 
   {
     #ifdef DEBUG
     debugSerial.println("Connected");
     #endif
-    delay(5000);
+    delay(2000);
     char topicChar[6];
+
     itoa(MQTT_DIMMER, topicChar, 10);
     client.subscribe(topicChar);
   }
+
+  return client.connected();
 }
 
 void sendAnemometerRequest()
