@@ -1,8 +1,8 @@
 #ifndef STATUSLED_H
 #define STATUSLED_H
 
-#define ON   false
-#define OFF  true
+#define LED_ON   false
+#define LED_OFF  true
 
 class statusled
 {

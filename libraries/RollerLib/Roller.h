@@ -1,10 +1,10 @@
 #ifndef ROLLER_H
 #define ROLLER_H
 
-#define UP    true
-#define DOWN  false
-#define ON    false
-#define OFF   true
+#define ROLLER_UP    true
+#define ROLLER_DOWN  false
+#define ROLLER_ON    false
+#define ROLLER_OFF   true
 
 class roller
 {

@@ -1,26 +1,28 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
-#define PODDASZE
-//#define KUCHNIA
+//#define PODDASZE
+#define KUCHNIA
 
-#define ROLLER_COUNT       3
 #define MAX_ROLLER_TIMEOUT 30  // in secunds
 #define INT_TIMER_PERIOD   100000 // in us
 #define ROLLER_TIMEOUT     MAX_ROLLER_TIMEOUT * 1000000 / INT_TIMER_PERIOD
 
 
 #ifdef KUCHNIA
+
+#define ROLLER_COUNT       3
 ////////////////////////////////////////////////////////////////////////////////
 /////////////////// KUCHNIA ////////////////////////////////////////////////////
 //Publish
 #define MQTT_UPTIME        9000
-#define MQTT_PIRSENSOR     9
-#define MQTT_LIGHTSENSOR   9
-#define MQTT_GASSENSOR     9
-#define MQTT_FLOODSENSOR   9
+#define MQTT_PIRSENSOR     9401
+#define MQTT_LIGHTSENSOR   9701
+#define MQTT_GASSENSOR     9901
+#define MQTT_FLOODSENSOR   9902
 
 //Subscribe
+#define MQTT_DIMMER        9201
 #define MQTT_ROLETA2       9501   // KUCHNIA FRONT
 #define MQTT_ROLETA3       9502   // KUCHNIA BOK
 #define MQTT_ROLETA1       9503   // SALON
@@ -30,11 +32,11 @@
 #define ROLETA1UPPIN       2
 #define ROLETA1DOWNPIN     3
 //#define SSforSDCard        4 - reserved
-#define PIRSENSORPIN       5
+#define DIMMERPIN          5
 #define ROLETA2UPPIN       6
 #define ROLETA2DOWNPIN     7
 //#define NOTUSEDPIN         8
-//#define NOTUSEDPIN         9
+#define PIRSENSORPIN       9
 //#define SSforEthernet      10 - reserved
 //#define MOSIforEthernet    11 - reserved
 //#define MISOforEthernet    12 - reserved
@@ -51,6 +53,8 @@
 
 
 #ifdef PODDASZE
+
+#define ROLLER_COUNT       5
 /////////////////// PODDASZE ////////////////////////////////////////////////////
 //Publish
 #define MQTT_UPTIME        9001

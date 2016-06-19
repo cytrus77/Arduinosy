@@ -8,7 +8,7 @@
 
 statusled::statusled(int pin, led_mode mode, unsigned long timer_duty_cycle)
 {
-  m_state  = OFF;
+  m_state  = LED_OFF;
   m_mode   = mode;
   m_pin    = pin;
   pinMode(m_pin, OUTPUT);
@@ -20,18 +20,18 @@ statusled::statusled(int pin, led_mode mode, unsigned long timer_duty_cycle)
 
 void statusled::turnOn()
 {
-  if (m_state != ON)
+  if (m_state != LED_ON)
   {
-    m_state = ON;
+    m_state = LED_ON;
     digitalWrite(m_pin, m_state);
   }
 }
   
 void statusled::turnOff()
 {
-  if (m_state != OFF)
+  if (m_state != LED_OFF)
   {
-    m_state = OFF;
+    m_state = LED_OFF;
     digitalWrite(m_pin, m_state);
   }
 }
@@ -82,7 +82,7 @@ void statusled::checkTimer()
   }
   else if(m_timer == 0)
   {
-    if (m_state == ON)
+    if (m_state == LED_ON)
     {
       turnOff();
     }

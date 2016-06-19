@@ -8,7 +8,7 @@
 
 roller::roller(int topic, int pin_up, int pin_down, unsigned long timeout_set)
 {
-  m_state = OFF;
+  m_state = ROLLER_OFF;
   m_topic = topic;
   m_pin_up   = pin_up;
   m_pin_down = pin_down;
@@ -23,12 +23,12 @@ void roller::up()
 {
   m_timeout_timer = m_roller_timeout;
   
-  if (!((m_direction == UP) && (m_state == ON)))
+  if (!((m_direction == ROLLER_UP) && (m_state == ROLLER_ON)))
   {
-    m_state = ON;
-    m_direction = UP;
+    m_state = ROLLER_ON;
+    m_direction = ROLLER_UP;
     digitalWrite(m_pin_up, m_state);
-    digitalWrite(m_pin_down, OFF);
+    digitalWrite(m_pin_down, ROLLER_OFF);
     Serial.println("Up");
   }
 }
@@ -37,11 +37,11 @@ void roller::down()
 {
   m_timeout_timer = m_roller_timeout;
 
-  if (!((m_direction == DOWN) && (m_state == ON)))
+  if (!((m_direction == ROLLER_DOWN) && (m_state == ROLLER_ON)))
   {
-    m_state = ON;
-    m_direction = DOWN;
-    digitalWrite(m_pin_up, OFF);
+    m_state = ROLLER_ON;
+    m_direction = ROLLER_DOWN;
+    digitalWrite(m_pin_up, ROLLER_OFF);
     digitalWrite(m_pin_down, m_state);
     Serial.println("Down");
   }
@@ -49,9 +49,9 @@ void roller::down()
 
 void roller::stop()
 {
-  if (m_state == ON)
+  if (m_state == ROLLER_ON)
   {
-    m_state = OFF;
+    m_state = ROLLER_OFF;
     digitalWrite(m_pin_up, m_state);
     digitalWrite(m_pin_down, m_state);
     Serial.println("STOP");
@@ -60,13 +60,13 @@ void roller::stop()
 
 void roller::setState(bool state, bool direction)
 {
-  if (state == ON)
+  if (state == ROLLER_ON)
   {
-    if (direction == UP)
+    if (direction == ROLLER_UP)
     {
       up();
     }
-    else if (direction == DOWN)
+    else if (direction == ROLLER_DOWN)
     {
       down();
     }
@@ -94,7 +94,7 @@ bool roller::getState()
 
 void roller::checkTimeout()
 {
-  if (m_state == ON)
+  if (m_state == ROLLER_ON)
   {   
     --m_timeout_timer;
 

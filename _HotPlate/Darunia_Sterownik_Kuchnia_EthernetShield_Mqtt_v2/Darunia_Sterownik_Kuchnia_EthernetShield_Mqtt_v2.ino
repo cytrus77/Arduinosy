@@ -18,39 +18,30 @@
 void ftoa(float Value, char* Buffer);
 void callback(char* topic, byte* payload, unsigned int length);
 
-// Update these with values suitable for your network.
-#ifdef KUCHNIA
 byte mac[]    = {  0xBA, 0xCA, 0xF1, 0xFA, 0x11, 0x01 };  // Kuchnia
 byte ip[]     = { 192, 168, 17, 31 };                     // Kuchnia
-#endif
-#ifdef PODDASZE
-byte mac[]    = {  0xBA, 0xCA, 0xF1, 0xFA, 0x11, 0x02 };  // Poddasze
-byte ip[]     = { 192, 168, 17, 32 };                     // Poddasze
-#endif
-
 byte server[] = { 192, 168, 17, 30 };
 long lastMqttReconnectAttempt = 0;
 
 EthernetClient ethClient;
 PubSubClient client(server, 1883, callback, ethClient);
 
-//Sensor Vars
 statusled StatusLed(STATUSLEDPIN, statusled::off, INT_TIMER_PERIOD);
 uptime Uptime(MQTT_UPTIME);
+
+//Sensor Vars
 roller Roller1(MQTT_ROLETA1, ROLETA1UPPIN, ROLETA1DOWNPIN, ROLLER_TIMEOUT);
 roller Roller2(MQTT_ROLETA2, ROLETA2UPPIN, ROLETA2DOWNPIN, ROLLER_TIMEOUT);
 roller Roller3(MQTT_ROLETA3, ROLETA3UPPIN, ROLETA3DOWNPIN, ROLLER_TIMEOUT);
-#ifdef PODDASZE
-roller Roller4(MQTT_ROLETA4, ROLETA4UPPIN, ROLETA4DOWNPIN, ROLLER_TIMEOUT);
-roller Roller5(MQTT_ROLETA5, ROLETA5UPPIN, ROLETA5DOWNPIN, ROLLER_TIMEOUT);
-
-roller* RollerTab[] = {&Roller1, &Roller2, &Roller3, &Roller4, &Roller5};
-#endif
-
-#ifdef KUCHNIA
-dimmer ledDimmer(DIMMERPIN);
 roller* RollerTab[] = {&Roller1, &Roller2, &Roller3};
-#endif
+
+sensor PirSensor  (MQTT_PIRSENSOR,   PIRSENSORPIN,   NORMALSCALE, DIGITALTYPE, SENS_SEND_CYCLE_PERIOD);
+sensor LightSensor(MQTT_LIGHTSENSOR, LIGHTSENSORPIN, NORMALSCALE, ANALOGTYPE,  SENS_SEND_CYCLE_PERIOD);
+sensor FloodSensor(MQTT_FLOODSENSOR, FLOODSENSORPIN, NORMALSCALE, ANALOGTYPE,  SENS_SEND_CYCLE_PERIOD);
+sensor GasSensor  (MQTT_GASSENSOR,   GASSENSORPIN,   NORMALSCALE, ANALOGTYPE,  SENS_SEND_CYCLE_PERIOD); 
+dimmer ledDimmer(DIMMERPIN, MQTT_DIMMER);
+
+
 /////////////////////////////////////////////START SETUP/////////////////////////////////////////////////
 void setup() {
   #ifdef DEBUG
@@ -110,6 +101,7 @@ void TimerLoop()
 {
   allRollerCheckTimeout();
   StatusLed.checkTimer();
+  ledDimmer.setDimmer();
 }
 
 void allRollerOff()
@@ -148,7 +140,6 @@ void allRollerSetState(bool state, bool direction)
   }
 }
 
-
 void allRollerCheckTimeout()
 {
   for (int i = 0; i < ROLLER_COUNT; ++i)
@@ -180,8 +171,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   p[length] = 0;
   data = (char) *p;
   topic_int = atoi(topic);
-  bool state = (data == 'U' || data == 'D') ? ON : OFF;
-  bool direction = (data == 'U' ? UP : DOWN);
+  int data_int  = atoi((char *) p);
 
   for (int i = 0; i < ROLLER_COUNT; ++i)
   {
@@ -189,13 +179,22 @@ void callback(char* topic, byte* payload, unsigned int length) {
     
     if (topic_int == RollerTemp.getTopic())
     {
+      bool state = (data == 'U' || data == 'D') ? ROLLER_ON : ROLLER_OFF;
+      bool direction = (data == 'U' ? ROLLER_UP : ROLLER_DOWN);
       RollerTemp.setState(state, direction);
     }
   }
 
   if (MQTT_ALL_ROLETS == topic_int)
   {
+    bool state = (data == 'U' || data == 'D') ? ROLLER_ON : ROLLER_OFF;
+    bool direction = (data == 'U' ? ROLLER_UP : ROLLER_DOWN);
     allRollerSetState(state, direction);
+  }
+
+  if (topic_int == ledDimmer.getMqttTopic())
+  {
+    ledDimmer.setValue(data_int);
   }
 
   // Free the memory
@@ -230,12 +229,7 @@ void sendMqtt(int topic, float value)
 
 boolean mqttConnect()
 {
-  #ifdef KUCHNIA
   if (client.connect("Kuchnia", "admin_kuchnia", "Isb_C4OGD4c1")) // Kuchnia
-  #endif
-  #ifdef PODDASZE
-  if (client.connect("Poddasze", "admin_poddasze", "Isb_C4OGD4c2")) // Poddasze
-  #endif
   {
     Serial.println("Connected");
     delay(2000);
@@ -251,6 +245,8 @@ boolean mqttConnect()
 
     itoa(MQTT_ALL_ROLETS, topicChar, 10);
     client.subscribe(topicChar);
+    itoa(ledDimmer.getMqttTopic(), topicChar, 10);
+    client.subscribe(topicChar); 
   }
 
   return client.connected();
