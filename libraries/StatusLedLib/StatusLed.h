@@ -29,7 +29,7 @@ public:
   void turnOff();
   void setMode(led_mode mode);
   bool getState();
-  void checkTimer();
+  void processTimer();
 };
 
 #endif

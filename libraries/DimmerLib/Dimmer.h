@@ -6,22 +6,23 @@ class dimmer
 private:
   int m_setValue;
   int m_mqttTopic;
-  int m_timeout;
-  unsigned long m_startTimer;
+  int m_mqttTimeoutTopic;
+  unsigned long m_timeout;
+  unsigned long m_timer;
   int m_currentValue;
-  int m_currentLight;
   int m_pin;
 
 public:
-  dimmer(int pin, int mqttTopic);
+  dimmer(int pin, int mqttTopic, int mqttTimeoutTopic, unsigned long timeout);
   void setDimmer(void);
   void setValue(int value);
-  void setTimeout(int timeout);
-  void setCurrentLight(int light);
+  void setTimeout(unsigned long timeout);
   
   int getMqttTopic();
+  int getTimeoutMqttTopic();
+  int getValue();
   
-  void checkTimeout();
+  void processTimer();
   void resetTimer();
 };
 

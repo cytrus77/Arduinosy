@@ -70,7 +70,7 @@ bool statusled::getState()
   return m_state;
 }
 
-void statusled::checkTimer()
+void statusled::processTimer()
 { 
   if (m_mode == off)
   {

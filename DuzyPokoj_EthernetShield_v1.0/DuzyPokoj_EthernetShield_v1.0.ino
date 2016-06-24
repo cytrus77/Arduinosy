@@ -27,7 +27,7 @@ const char* ssid = "cytrynowa_wro";
 const char* password = "limonkowy";
 
 // Update these with values suitable for your network.
-byte mac[]    = {  0xDE, 0xAD, 0xC1, 0xF0, 0xAA, 0xB2 };
+byte mac[]    = { 0xDE, 0xAD, 0xC1, 0xF0, 0xAA, 0xB2 };
 byte server[] = { 192, 168, 0, 142 };
 byte ip[]     = { 192, 168, 0, 221 };
 

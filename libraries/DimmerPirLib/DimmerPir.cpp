@@ -4,99 +4,68 @@
 #include "WProgram.h"
 #endif
 
-#include "Dimmer.h"
-#include ""
+#include "DimmerPir.h"
 
-dimmerPir::dimmerPir(int pin)
+//#define DEBUG 1
+
+
+dimmerPir::dimmerPir(int mqttPirTopic, int mqttLightTopic, dimmer* dimmer, bool* pirStatus)
+  : m_mqttPirTopic(mqttPirTopic),
+	m_mqttLightTriggerTopic(mqttLightTopic),
+	m_pirOnFlag(true),
+	m_currentPir(pirStatus),
+	m_lightTrigger(50),
+	m_currentLight(0),
+	m_dimmer(dimmer)
 {
-  m_currentValue = 0;
-  m_setValue     = 0;
-  m_trigger      = 50;
-  m_timeout      = 60;
-  m_pin          = pin;
-  m_pir_flag     = true;
-  pinMode(m_pin, OUTPUT);
 }
 
-void dimmer::setDimmer()
+void dimmerPir::checkSensors()
 {
-  if(m_currentValue != m_setValue)
-  {
-  if (m_currentValue < m_setValue)      ++m_currentValue;
-  else if (m_currentValue > m_setValue) --m_currentValue;
+	if (m_pirOnFlag)
+	{
+		if (*m_currentPir && (m_currentLight <= m_lightTrigger))
+		{
+			if (m_dimmer->getValue() == 0)
+			{
+				m_dimmer->setValue(100);
+			}
+		}
+	}
 
-  analogWrite(m_pin, m_currentValue*m_currentValue/255);
-  }
+	#ifdef DEBUG
+	Serial.print("DimmerPir values m_pirOnFlag=");
+	Serial.print(m_pirOnFlag);
+	Serial.print(" m_currentPir=");
+	Serial.print(*m_currentPir);
+	Serial.print(" m_currentLight=");
+	Serial.print(m_currentLight);
+	Serial.print(" m_lightTrigger=");
+	Serial.println(m_lightTrigger);
+	#endif
 }
 
-void dimmer::setValue(int value)
+void dimmerPir::setLightTrigger(int light)
 {
-  int old_value = m_setValue;
-  if(value >= 0 && value <= 100) m_setValue = map(value, 0, 100, 0, 255);
-  else if (value < 0)            m_setValue = 0;
-  else if (value > 100)          m_setValue = 255;
-  resetTimer();
+	m_lightTrigger = light;
 }
 
-void dimmer::setTrigger(int trigger)
+void dimmerPir::setCurrentLight(int light)
 {
-  if(trigger >= 0 && trigger <= 100)
-  { 
-    m_trigger = trigger;
-    return;
-  }
-  if (trigger < 0)            m_trigger = 0;
-  else if (trigger > 100)     m_trigger = 100;
+	m_currentLight = light;
 }
 
-void dimmer::setTimeout(int timeout)
+void dimmerPir::setPirFlag(bool pirFlag)
 {
-  if(timeout >= 0 && timeout <= 100)
-  { 
-    m_timeout = timeout;
-    return;
-  }
-  
-  if (timeout < 0)         
-  {
-    m_timeout = 0;
-  }
-  else if (timeout > 100)     
-  {
-    m_timeout = 100;
-  }
+	m_pirOnFlag = pirFlag;
 }
 
-void dimmer::checkPir()
+int dimmerPir::getPirMqttTopic()
 {
-  resetTimer();
-  
-  if ((m_currentLight < m_trigger) && !m_setValue && m_pir_flag) 
-  {
-    setValue(50);
-  }
+	return m_mqttPirTopic;
 }
 
-void dimmer::checkTimeout()
+int dimmerPir::getLightMqttTopic()
 {
-  if( (millis() - m_startTimer)/1000 > m_timeout)
-  {
-    setValue(0);
-  }
+	return m_mqttLightTriggerTopic;
 }
-
-void dimmer::setCurrentLight(int light)
-{
-  m_currentLight = light;
-}
-
-void dimmer::resetTimer()
-{
-	m_startTimer = millis();
-}
-
-void dimmer::setPirFlag(bool flag)
-{
-  m_pir_flag = flag;
-}
-

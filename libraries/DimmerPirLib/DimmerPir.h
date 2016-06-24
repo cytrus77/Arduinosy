@@ -2,31 +2,31 @@
 #define DIMMERPIR_H
 
 #include "Dimmer.h"
-#include "Czujnik.h"
+#include "MqttSensor.h"
+
 
 class dimmerPir
 {
 private:
-  int m_trigger;
-  int m_setValue;
-  int m_timeout;
-  unsigned long m_startTimer;
-  int m_currentValue;
-  int m_currentLight;
-  int m_pin;
-  bool m_pir_flag;
+	int   m_mqttPirTopic;
+	int   m_mqttLightTriggerTopic;
+	bool  m_pirOnFlag;
+	bool* m_currentPir;
+	int   m_lightTrigger;
+	int   m_currentLight;
+	dimmer* m_dimmer;
 
 public:
-  dimmer(int pin);
-  void setDimmer(void);
-  void setTrigger(int trigger);
-  void setValue(int value);
-  void setTimeout(int timeout);
-  void setCurrentLight(int light);
-  void checkPir();
-  void checkTimeout();
-  void resetTimer();
-  void setPirFlag(bool flag);
+	dimmerPir(int mqttPirTopic, int mqttLightTopic, dimmer* dimmer, bool* pirStatus);
+
+	void checkSensors();
+
+	int getPirMqttTopic();
+	int getLightMqttTopic();
+
+	void setLightTrigger(int light);
+	void setCurrentLight(int light);
+	void setPirFlag(bool pirFlag);
 };
 
 #endif

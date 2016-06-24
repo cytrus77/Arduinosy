@@ -9,11 +9,12 @@
 
 extern PubSubClient client;
 
-uptime::uptime(int topic)
+uptime::uptime(int topic, PubSubClient* client)
+  : m_mqttTopic(topic),
+    m_uptime(0),
+    m_sendFlag(true),
+    m_mqttClient(client)
 {
-  m_mqttTopic  = topic;
-  m_uptime     = 0;
-  m_sendFlag   = true;
 }
 
 void uptime::getUptime()
@@ -38,9 +39,11 @@ void uptime::sendIfChanged()
     char dataChar[6];
     itoa(m_mqttTopic, topicChar, 10);
     itoa(m_uptime, dataChar, 10);
-    client.publish(topicChar, dataChar);
-    Serial.println("uptime - wysylanie");
+    m_mqttClient->publish(topicChar, dataChar);
     m_sendFlag = false;
+    #ifdef DEBUG
+    Serial.println("uptime::sendIfChanged - sending");
+    #endif
   }
 }
 
