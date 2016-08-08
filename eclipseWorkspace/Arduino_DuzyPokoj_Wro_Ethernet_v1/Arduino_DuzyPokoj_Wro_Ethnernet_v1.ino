@@ -39,7 +39,7 @@ mqttSensor Pir2Sensor (MQTT_PIR2SENSOR,  &client, PIR2SENSORPIN,  DIGITALTYPE, N
 mqttSensor LightSensor(MQTT_LIGHTSENSOR, &client, LIGHTSENSORPIN, ANALOGTYPE,  INVERTEDSCALE, LIGHT_PERIOD);
 mqttSensor GasSensor  (MQTT_GASSENSOR,   &client, GASSENSORPIN,   ANALOGTYPE,  NORMALSCALE,   GAS_PERIOD);
 dimmer     ledDimmer  (DIMMERPIN, MQTT_DIMMER, MQTT_DIMMER_TIMEOUT, DIMMER_TIMEOUT);
-dimmerPir  ledDimmerPir(MQTT_DIMMER_PIR, MQTT_DIMMER_TRIGGER, &ledDimmer, &pirStatus);
+dimmerPir  ledDimmerPir(MQTT_DIMMER_PIR, MQTT_DIMMER_TRIGGER, &ledDimmer, &pirStatus, &LightSensor);
 OneWire oneWire(DS18B20PIN);
 DallasTemperatureMqtt ds18b20Sensor(MQTT_TEMP_DS18, &client, &oneWire, TEMP_PERIOD);
 dhtMqtt dht11Sensor(MQTT_TEMP_DHT, MQTT_HUMIDEX, &client, DHT11PIN, TEMP_PERIOD);

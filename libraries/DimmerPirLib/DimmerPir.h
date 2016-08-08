@@ -13,11 +13,11 @@ private:
 	bool  m_pirOnFlag;
 	bool* m_currentPir;
 	int   m_lightTrigger;
-	int   m_currentLight;
 	dimmer* m_dimmer;
+	mqttSensor* m_lightSensor;
 
 public:
-	dimmerPir(int mqttPirTopic, int mqttLightTopic, dimmer* dimmer, bool* pirStatus);
+	dimmerPir(int mqttPirTopic, int mqttLightTopic, dimmer* dimmer, bool* pirStatus, mqttSensor* lightSensor);
 
 	void checkSensors();
 
@@ -25,7 +25,6 @@ public:
 	int getLightMqttTopic();
 
 	void setLightTrigger(int light);
-	void setCurrentLight(int light);
 	void setPirFlag(bool pirFlag);
 };
 

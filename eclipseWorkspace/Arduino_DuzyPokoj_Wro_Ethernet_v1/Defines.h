@@ -3,7 +3,7 @@
 
 static const unsigned long INT_TIMER_PERIOD = 2000; // in us
 static const unsigned long PIR_PERIOD       =   2 *  100000 / INT_TIMER_PERIOD;  // values in ms - 200ms;
-static const unsigned long LIGHT_PERIOD     =  15 * 1000000 / INT_TIMER_PERIOD;
+static const unsigned long LIGHT_PERIOD     =   1 * 1000000 / INT_TIMER_PERIOD;
 static const unsigned long GAS_PERIOD       =  30 * 1000000 / INT_TIMER_PERIOD;
 static const unsigned long TEMP_PERIOD      =  60 * 1000000 / INT_TIMER_PERIOD;  // values in second - 60s
 static const unsigned long DIMMER_TIMEOUT   = 300 * 1000000 / INT_TIMER_PERIOD;  // values in second - 300s

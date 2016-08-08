@@ -60,6 +60,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Arduino_DuzyPokoj_Wro_Ethernet_v1/Libraries/UptimeLib}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Arduino_DuzyPokoj_Wro_Ethernet_v1/Libraries/UtilsLib}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Arduino_DuzyPokoj_Wro_Ethernet_v1/Libraries/SPI_z_mastera}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Arduino_DuzyPokoj_Wro_Ethernet_v1/Libraries/SPI}&quot;"/>
 								</option>
 								<inputType id="it.baeyens.arduino.compiler.cpp.sketch.input.894365051" name="CPP source files" superClass="it.baeyens.arduino.compiler.cpp.sketch.input"/>
 							</tool>
@@ -106,6 +107,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Arduino_DuzyPokoj_Wro_Ethernet_v1/Libraries/UptimeLib}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Arduino_DuzyPokoj_Wro_Ethernet_v1/Libraries/UtilsLib}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Arduino_DuzyPokoj_Wro_Ethernet_v1/Libraries/SPI_z_mastera}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Arduino_DuzyPokoj_Wro_Ethernet_v1/Libraries/SPI}&quot;"/>
 								</option>
 								<inputType id="it.baeyens.arduino.compiler.c.sketch.input.1074859920" name="C Source Files" superClass="it.baeyens.arduino.compiler.c.sketch.input"/>
 							</tool>

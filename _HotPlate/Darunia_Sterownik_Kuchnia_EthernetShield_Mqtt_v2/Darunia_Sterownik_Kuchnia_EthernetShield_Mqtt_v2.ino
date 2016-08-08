@@ -12,7 +12,7 @@
 #include "StatusLed.h"
 #include "Czujnik.h"
 
-#define DEBUG 1
+//#define DEBUG 1
 
 
 void ftoa(float Value, char* Buffer);
@@ -27,7 +27,7 @@ EthernetClient ethClient;
 PubSubClient client(server, 1883, callback, ethClient);
 
 statusled StatusLed(STATUSLEDPIN, statusled::off, INT_TIMER_PERIOD);
-uptime Uptime(MQTT_UPTIME);
+uptime Uptime(MQTT_UPTIME, &client);
 
 //Sensor Vars
 roller Roller1(MQTT_ROLETA1, ROLETA1UPPIN, ROLETA1DOWNPIN, ROLLER_TIMEOUT);
@@ -191,10 +191,13 @@ void callback(char* topic, byte* payload, unsigned int length) {
     bool direction = (data == 'U' ? ROLLER_UP : ROLLER_DOWN);
     allRollerSetState(state, direction);
   }
-
-  if (topic_int == ledDimmer.getMqttTopic())
+  else if (topic_int == ledDimmer.getMqttTopic())
   {
     ledDimmer.setValue(data_int);
+  }
+  else if (topic_int == MQTT_SUBSCRIBE)
+  {
+    sendAllSubscribers();
   }
 
   // Free the memory
@@ -233,6 +236,14 @@ boolean mqttConnect()
   {
     Serial.println("Connected");
     delay(2000);
+    sendAllSubscribers();
+  }
+
+  return client.connected();
+}
+
+void sendAllSubscribers(void)
+{
     char topicChar[6];
     
     for (int i = 0; i < ROLLER_COUNT; ++i)
@@ -247,9 +258,6 @@ boolean mqttConnect()
     client.subscribe(topicChar);
     itoa(ledDimmer.getMqttTopic(), topicChar, 10);
     client.subscribe(topicChar); 
-  }
-
-  return client.connected();
 }
 
 /**************************************************

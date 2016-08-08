@@ -11,6 +11,7 @@
 /////////////////// KUCHNIA ////////////////////////////////////////////////////
 //Publish
 #define MQTT_UPTIME        9000
+#define MQTT_SUBSCRIBE     9050
 #define MQTT_PIRSENSOR     9401
 #define MQTT_LIGHTSENSOR   9701
 #define MQTT_GASSENSOR     9901

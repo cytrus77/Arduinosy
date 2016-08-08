@@ -9,14 +9,14 @@
 //#define DEBUG 1
 
 
-dimmerPir::dimmerPir(int mqttPirTopic, int mqttLightTopic, dimmer* dimmer, bool* pirStatus)
+dimmerPir::dimmerPir(int mqttPirTopic, int mqttLightTopic, dimmer* dimmer, bool* pirStatus, mqttSensor* lightSensor)
   : m_mqttPirTopic(mqttPirTopic),
 	m_mqttLightTriggerTopic(mqttLightTopic),
 	m_pirOnFlag(true),
 	m_currentPir(pirStatus),
 	m_lightTrigger(50),
-	m_currentLight(0),
-	m_dimmer(dimmer)
+	m_dimmer(dimmer),
+	m_lightSensor(lightSensor)
 {
 }
 
@@ -24,11 +24,18 @@ void dimmerPir::checkSensors()
 {
 	if (m_pirOnFlag)
 	{
-		if (*m_currentPir && (m_currentLight <= m_lightTrigger))
+		if (*m_currentPir)
 		{
 			if (m_dimmer->getValue() == 0)
 			{
-				m_dimmer->setValue(100);
+				if (m_lightSensor->getValue() <= m_lightTrigger)
+				{
+					m_dimmer->setValue(100);
+				}
+			}
+			else
+			{
+				m_dimmer->resetTimer();
 			}
 		}
 	}
@@ -48,16 +55,15 @@ void dimmerPir::checkSensors()
 void dimmerPir::setLightTrigger(int light)
 {
 	m_lightTrigger = light;
-}
 
-void dimmerPir::setCurrentLight(int light)
-{
-	m_currentLight = light;
+	checkSensors();
 }
 
 void dimmerPir::setPirFlag(bool pirFlag)
 {
 	m_pirOnFlag = pirFlag;
+
+	checkSensors();
 }
 
 int dimmerPir::getPirMqttTopic()

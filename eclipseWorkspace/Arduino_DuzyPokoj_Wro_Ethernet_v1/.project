@@ -87,6 +87,16 @@
 			<locationURI>ArduinoPivateLibPath/PubSubClient</locationURI>
 		</link>
 		<link>
+			<name>Libraries/RelayLib</name>
+			<type>2</type>
+			<locationURI>ArduinoPivateLibPath/RelayLib</locationURI>
+		</link>
+		<link>
+			<name>Libraries/RelayPirLib</name>
+			<type>2</type>
+			<locationURI>ArduinoPivateLibPath/RelayPirLib</locationURI>
+		</link>
+		<link>
 			<name>Libraries/RollerLib</name>
 			<type>2</type>
 			<locationURI>ArduinoPivateLibPath/RollerLib</locationURI>
