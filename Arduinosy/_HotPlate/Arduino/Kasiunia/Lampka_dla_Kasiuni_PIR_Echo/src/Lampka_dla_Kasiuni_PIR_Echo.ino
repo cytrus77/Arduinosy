@@ -13,18 +13,25 @@
 #include <avr/wdt.h>
 #include "TimerOne.h"
 #include "Dimmer.h"
+#include "DimmerPir.h"
+#include "MqttSensor.h"
 
 #define TIMER0PERIOD       3000 // 3ms
 
 #define TRIGGER_PIN   12 // Arduino pin tied to trigger pin on ping sensor.
 #define ECHO_PIN      11 // Arduino pin tied to echo pin on ping sensor.
-#define MAX_DISTANCE  40 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
+#define MAX_DISTANCE  30 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
+#define LED_TIMEOUT   300 // in seconds
 
 #define LED_PIN        6
 #define PIR_PIN        3
+#define LIGHT_PIN      A5
 
 NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
 dimmer ledDimmer(LED_PIN, 0);
+mqttSensor lightSensor(0, 0, LIGHT_PIN, ANALOGTYPE, INVERTEDSCALE, 0);
+mqttSensor pirSensor(0, 0, PIR_PIN, DIGITALTYPE, NORMALSCALE, 0);
+dimmerPir ledDimmerPir(0, 0, &ledDimmer, &pirSensor, &lightSensor);
 
 unsigned int pingSpeed = 100; // How frequently are we going to send out a ping (in milliseconds). 50ms would be 20 times a second.
 unsigned long pingTimer;     // Holds the next ping time.
@@ -32,23 +39,27 @@ unsigned int pingValue[10] = {0,0,0,0,0,0,0,0,0,0};
 int pingPointer = 0;
 
 ////////////////////////////// SETUP ////////////////////////////////////////////
-void setup() 
+void setup()
 {
   Serial.begin(115200); // Open serial monitor at 115200 baud to see ping results.
   wdt_enable(WDTO_8S);
   Serial.println("ARDUINO: startup");
   pingTimer = millis(); // Start now.
-  
+
   pinMode(LED_PIN, OUTPUT);
   pinMode(PIR_PIN, INPUT);
 
   Timer1.initialize(TIMER0PERIOD);
   Timer1.attachInterrupt(TimerLoop);
+
+  ledDimmerPir.setLightTrigger(50);
+  ledDimmerPir.setPirFlag(true);
+  ledDimmer.setTimeout(LED_TIMEOUT * 1000000 / TIMER0PERIOD);
 }
 
 //////////////////////////// MAIN LOOP //////////////////////////////////////////
 
-void loop() 
+void loop()
 {
   wdt_reset();
 
@@ -59,11 +70,23 @@ void loop()
   }
   // Do other stuff here, really. Think of it as multi-tasking.
   unsigned int ledValue = getAvgPingValue();
-  ledValue = 255 - ((ledValue / 10) * (ledValue / 10) / 160);
-//  unsigned int ledValue = 255 - (sonar.ping_result / 8);
- // ledValue = ledValue > 255 ? 0 : ledValue;
-  ledDimmer.setValue(ledValue);
-//  Serial.println(ledValue);
+  static unsigned int lastLedValue = 0xFFFF;
+  if (abs(ledValue - lastLedValue) > 50)
+  {
+    if (ledValue < 200) ledValue = 200;
+    if (ledValue > 700) ledValue = 700;
+    ledValue = map(ledValue, 200, 700, 255, 0);
+    ledValue = ledValue * ledValue / 255;
+    ledDimmer.setValue(ledValue);
+    lastLedValue = ledValue;
+  }
+
+  ledDimmerPir.checkSensors();
+
+  // Serial.print("PIR: ");
+  // Serial.println(digitalRead(PIR_PIN));
+  // Serial.print("Light: ");
+  // Serial.println(analogRead(LIGHT_PIN));
 }
 
 void echoCheck() { // Timer2 interrupt calls this function every 24uS where you can check the ping status.
@@ -94,4 +117,5 @@ unsigned int getAvgPingValue()
 void TimerLoop()
 {
   ledDimmer.setDimmer();
+  ledDimmer.processTimer();
 }

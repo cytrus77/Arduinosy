@@ -15,9 +15,11 @@ private:
 	int   m_lightTrigger;
 	dimmer* m_dimmer;
 	mqttSensor* m_lightSensor;
+	mqttSensor* m_pirSensor;
 
 public:
 	dimmerPir(int mqttPirTopic, int mqttLightTopic, dimmer* dimmer, bool* pirStatus, mqttSensor* lightSensor);
+	dimmerPir(int mqttPirTopic, int mqttLightTopic, dimmer* dimmer, mqttSensor* pirSensor, mqttSensor* lightSensor);
 
 	void checkSensors();
 

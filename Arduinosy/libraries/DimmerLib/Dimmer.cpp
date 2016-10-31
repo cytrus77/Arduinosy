@@ -57,7 +57,7 @@ void dimmer::setValue(int value)
   else if (value > 100)          m_setValue = 255;
 
   resetTimer();
-  
+
   #ifdef DEBUG
   Serial.print("Dimmer value changed =");
   Serial.println(m_setValue);
@@ -67,7 +67,7 @@ void dimmer::setValue(int value)
 void dimmer::setTimeout(unsigned long timeout)
 {
   if(timeout >= 0)
-  { 
+  {
     m_timeout = timeout;
   }
 
@@ -98,13 +98,13 @@ void dimmer::processTimer()
 {
   if (m_timeout)
   {
-	if (m_timer)
-	{
-	  --m_timer;
-	}
-	else
-	{
-	  setValue(0);
-	}
+  	if (m_timer)
+  	{
+  	  --m_timer;
+  	}
+  	else
+  	{
+  	  setValue(0);
+  	}
   }
 }

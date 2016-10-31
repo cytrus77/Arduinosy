@@ -10,16 +10,15 @@
 #include "Roller.h"
 #include "Dimmer.h"
 #include "StatusLed.h"
-#include "Czujnik.h"
+#include "MqttSensor.h"
 
 //#define DEBUG 1
-
 
 void ftoa(float Value, char* Buffer);
 void callback(char* topic, byte* payload, unsigned int length);
 
-byte mac[]    = {  0xBA, 0xCA, 0xF1, 0xFA, 0x11, 0x01 };  // Kuchnia
-byte ip[]     = { 192, 168, 17, 31 };                     // Kuchnia
+byte mac[]    = {  0xBA, 0xCA, 0xF1, 0xFA, 0x11, 0x33 };  // Garaz
+byte ip[]     = { 192, 168, 17, 33 };                     // Garaz
 byte server[] = { 192, 168, 17, 30 };
 long lastMqttReconnectAttempt = 0;
 
@@ -32,14 +31,9 @@ uptime Uptime(MQTT_UPTIME, &client);
 //Sensor Vars
 roller Roller1(MQTT_ROLETA1, ROLETA1UPPIN, ROLETA1DOWNPIN, ROLLER_TIMEOUT);
 roller Roller2(MQTT_ROLETA2, ROLETA2UPPIN, ROLETA2DOWNPIN, ROLLER_TIMEOUT);
-roller Roller3(MQTT_ROLETA3, ROLETA3UPPIN, ROLETA3DOWNPIN, ROLLER_TIMEOUT);
-roller* RollerTab[] = {&Roller1, &Roller2, &Roller3};
+roller* RollerTab[] = {&Roller1, &Roller2};
 
-sensor PirSensor  (MQTT_PIRSENSOR,   PIRSENSORPIN,   NORMALSCALE, DIGITALTYPE, SENS_SEND_CYCLE_PERIOD);
-sensor LightSensor(MQTT_LIGHTSENSOR, LIGHTSENSORPIN, NORMALSCALE, ANALOGTYPE,  SENS_SEND_CYCLE_PERIOD);
-sensor FloodSensor(MQTT_FLOODSENSOR, FLOODSENSORPIN, NORMALSCALE, ANALOGTYPE,  SENS_SEND_CYCLE_PERIOD);
-sensor GasSensor  (MQTT_GASSENSOR,   GASSENSORPIN,   NORMALSCALE, ANALOGTYPE,  SENS_SEND_CYCLE_PERIOD); 
-dimmer ledDimmer(DIMMERPIN, MQTT_DIMMER);
+mqttSensor SmokeSensor  (MQTT_PIRSENSOR,   &client, PIRSENSORPIN,   DIGITALTYPE, NORMALSCALE,   SENS_SEND_CYCLE_PERIOD);
 
 
 /////////////////////////////////////////////START SETUP/////////////////////////////////////////////////
@@ -48,11 +42,11 @@ void setup() {
   Serial.begin(19200);
   Serial.println("setup()");
   #endif
-  
+
   Ethernet.begin(mac, ip);
   delay(2000);
   mqttConnect();
-  
+
   //Smooth dimming interrupt init
   Timer1.initialize(INT_TIMER_PERIOD);
   Timer1.attachInterrupt(TimerLoop);
@@ -63,7 +57,7 @@ void setup() {
 /////////////////////////////////////////////END SETUP/////////////////////////////////////////////////
 
 /////////////////////////////////////////////START MAIN LOOP/////////////////////////////////////////////////
-void loop() {  
+void loop() {
   wdt_reset();
 
   if(client.connected())
@@ -78,20 +72,20 @@ void loop() {
      #ifdef DEBUG
      Serial.println("Disconnected");
      #endif
-     
+
      StatusLed.setMode(statusled::offline);
-     
+
      long now = millis();
-     if (now - lastMqttReconnectAttempt > 3000) 
+     if (now - lastMqttReconnectAttempt > 3000)
      {
         lastMqttReconnectAttempt = now;
         // Attempt to reconnect
-        if (mqttConnect()) 
+        if (mqttConnect())
         {
            lastMqttReconnectAttempt = 0;
         }
      }
-     
+
      allRollerOff();
   }
 }
@@ -100,8 +94,7 @@ void loop() {
 void TimerLoop()
 {
   allRollerCheckTimeout();
-  StatusLed.checkTimer();
-  ledDimmer.setDimmer();
+  StatusLed.processTimer();
 }
 
 void allRollerOff()
@@ -156,14 +149,14 @@ void callback(char* topic, byte* payload, unsigned int length) {
   // constructing the PUBLISH packet.
   int data = 0;
   int topic_int = 0;
-  
+
   #ifdef DEBUG
   Serial.print(topic);
   Serial.print(" => ");
   Serial.write(payload, length);
   Serial.println();
   #endif
-  
+
   // Allocate the correct amount of memory for the payload copy
   byte* p = (byte*)malloc(length+1);
   // Copy the payload to the new buffer
@@ -176,7 +169,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   for (int i = 0; i < ROLLER_COUNT; ++i)
   {
     roller& RollerTemp = *(RollerTab[i]);
-    
+
     if (topic_int == RollerTemp.getTopic())
     {
       bool state = (data == 'U' || data == 'D') ? ROLLER_ON : ROLLER_OFF;
@@ -190,10 +183,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
     bool state = (data == 'U' || data == 'D') ? ROLLER_ON : ROLLER_OFF;
     bool direction = (data == 'U' ? ROLLER_UP : ROLLER_DOWN);
     allRollerSetState(state, direction);
-  }
-  else if (topic_int == ledDimmer.getMqttTopic())
-  {
-    ledDimmer.setValue(data_int);
   }
   else if (topic_int == MQTT_SUBSCRIBE)
   {
@@ -211,7 +200,7 @@ void sendMqtt(int topic, int value)
   itoa(topic, topicChar, 10);
   itoa(value, dataChar, 10);
   client.publish(topicChar, dataChar);
-      
+
   Serial.println("Sending MQTT");
   Serial.println(topicChar);
   Serial.println(dataChar);
@@ -224,7 +213,7 @@ void sendMqtt(int topic, float value)
   itoa(topic, topicChar, 10);
   ftoa(value, dataChar);
   client.publish(topicChar, dataChar);
-      
+
   Serial.println("Sending MQTT");
   Serial.println(topicChar);
   Serial.println(dataChar);
@@ -245,7 +234,7 @@ boolean mqttConnect()
 void sendAllSubscribers(void)
 {
     char topicChar[6];
-    
+
     for (int i = 0; i < ROLLER_COUNT; ++i)
     {
       roller& RollerTemp = *(RollerTab[i]);
@@ -256,8 +245,6 @@ void sendAllSubscribers(void)
 
     itoa(MQTT_ALL_ROLETS, topicChar, 10);
     client.subscribe(topicChar);
-    itoa(ledDimmer.getMqttTopic(), topicChar, 10);
-    client.subscribe(topicChar); 
 }
 
 /**************************************************
@@ -270,7 +257,7 @@ void sendAllSubscribers(void)
  *    parameters:
  *            - Buffer must be 8 chars long
  *            - 3 digits precision max
- *            - absolute range is -524,287 to 524,287 
+ *            - absolute range is -524,287 to 524,287
  *            - resolution (epsilon) is 0.125 and
  *              always rounds down
  **************************************************/
@@ -279,22 +266,22 @@ void sendAllSubscribers(void)
      union
      {
          float f;
-     
+
          struct
          {
              unsigned int    mantissa_lo : 16;
-             unsigned int    mantissa_hi : 7;    
+             unsigned int    mantissa_hi : 7;
              unsigned int     exponent : 8;
              unsigned int     sign : 1;
          };
      } helper;
-     
+
      unsigned long mantissa;
      signed char exponent;
      unsigned int int_part;
      char frac_part[3];
      int i, count = 0;
-     
+
      helper.f = Value;
      //mantissa is LS 23 bits
      mantissa = helper.mantissa_lo;
@@ -303,7 +290,7 @@ void sendAllSubscribers(void)
      mantissa += 0x00800000;
      //exponent is biased by 127
      exponent = (signed char) helper.exponent - 127;
-     
+
      //too big to shove into 8 chars
      if (exponent > 18)
      {
@@ -313,7 +300,7 @@ void sendAllSubscribers(void)
          Buffer[3] = '\0';
          return;
      }
-     
+
      //too small to resolve (resolution of 1/8)
      if (exponent < -3)
      {
@@ -321,36 +308,36 @@ void sendAllSubscribers(void)
          Buffer[1] = '\0';
          return;
      }
-     
+
      count = 0;
-     
+
      //add negative sign (if applicable)
      if (helper.sign)
      {
          Buffer[0] = '-';
          count++;
      }
-     
+
      //get the integer part
-     int_part = mantissa >> (23 - exponent);    
+     int_part = mantissa >> (23 - exponent);
      //convert to string
      itoa(int_part, &Buffer[count], 10);
-     
+
      //find the end of the integer
      for (i = 0; i < 8; i++)
          if (Buffer[i] == '\0')
          {
              count = i;
              break;
-         }        
- 
-     //not enough room in the buffer for the frac part    
+         }
+
+     //not enough room in the buffer for the frac part
      if (count > 5)
          return;
-     
-     //add the decimal point    
+
+     //add the decimal point
      Buffer[count++] = '.';
-     
+
      //use switch to resolve the fractional part
      switch (0x7 & (mantissa  >> (20 - exponent)))
      {
@@ -362,46 +349,45 @@ void sendAllSubscribers(void)
          case 1:
              frac_part[0] = '1';
              frac_part[1] = '2';
-             frac_part[2] = '5';            
+             frac_part[2] = '5';
              break;
          case 2:
              frac_part[0] = '2';
              frac_part[1] = '5';
-             frac_part[2] = '0';            
+             frac_part[2] = '0';
              break;
          case 3:
              frac_part[0] = '3';
              frac_part[1] = '7';
-             frac_part[2] = '5';            
+             frac_part[2] = '5';
              break;
          case 4:
              frac_part[0] = '5';
              frac_part[1] = '0';
-             frac_part[2] = '0';            
+             frac_part[2] = '0';
              break;
          case 5:
              frac_part[0] = '6';
              frac_part[1] = '2';
-             frac_part[2] = '5';            
+             frac_part[2] = '5';
              break;
          case 6:
              frac_part[0] = '7';
              frac_part[1] = '5';
-             frac_part[2] = '0';            
+             frac_part[2] = '0';
              break;
          case 7:
              frac_part[0] = '8';
              frac_part[1] = '7';
-             frac_part[2] = '5';                    
+             frac_part[2] = '5';
              break;
      }
-     
+
      //add the fractional part to the output string
      for (i = 0; i < 3; i++)
          if (count < 7)
              Buffer[count++] = frac_part[i];
-     
+
      //make sure the output is terminated
      Buffer[count] = '\0';
  }
- 
