@@ -55,27 +55,52 @@ void dimmerPir::checkSensors()
       {
         m_lightSensor->doMeasure();
 
-        if (m_lightSensor->getValue() <= m_lightTrigger)
+        if (m_lightSensor->getInputType() == ANALOGTYPE)
         {
-          m_dimmer->setValue(100);
+          if (m_lightSensor->getValue() <= m_lightTrigger)
+          {
+            m_dimmer->setValue(100);
+            Serial.println("Set light to 100 !");
+          }
+        }
+        else if (m_lightSensor->getInputType() == DIGITALTYPE)
+        {
+          if (m_lightSensor->getScaleType() == NORMALSCALE)
+          {
+            if (m_lightSensor->getValue())
+            {
+              m_dimmer->setValue(100);
+              Serial.println("Set light to 100 !");
+            }
+          }
+          else if (m_lightSensor->getScaleType() == INVERTEDSCALE)
+          {
+            if (!m_lightSensor->getValue())
+            {
+              m_dimmer->setValue(100);
+              Serial.println("Set light to 100 !");
+            }
+          }
         }
       }
       else
       {
         m_dimmer->resetTimer();
       }
-
-      #ifdef DEBUG
-      Serial.print("DimmerPir values m_pirOnFlag=");
-      Serial.print(m_pirOnFlag);
-      Serial.print(" m_currentPir=");
-      Serial.print(*m_currentPir);
-      Serial.print(" m_currentLight=");
-      Serial.print(m_currentLight);
-      Serial.print(" m_lightTrigger=");
-      Serial.println(m_lightTrigger);
-      #endif
     }
+
+    #ifdef DEBUG
+    Serial.print("DimmerPir values m_pirOnFlag=");
+    Serial.print(m_pirOnFlag);
+    Serial.print(" dimmerValue=");
+    Serial.print(m_dimmer->getValue());
+    Serial.print(" moveDeteced=");
+    Serial.print(moveDeteced);
+    Serial.print(" m_currentLight=");
+    Serial.print(m_lightSensor->getValue());
+    Serial.print(" m_lightTrigger=");
+    Serial.println(m_lightTrigger);
+    #endif
 	}
 }
 

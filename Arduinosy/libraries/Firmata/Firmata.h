@@ -1,7 +1,7 @@
 /*
-  Firmata.h - Firmata library v2.5.1 - 2015-12-26
+  Firmata.h - Firmata library v2.5.4 - 2016-10-23
   Copyright (c) 2006-2008 Hans-Christoph Steiner.  All rights reserved.
-  Copyright (C) 2009-2015 Jeff Hoefs.  All rights reserved.
+  Copyright (C) 2009-2016 Jeff Hoefs.  All rights reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -30,7 +30,7 @@
  */
 #define FIRMATA_FIRMWARE_MAJOR_VERSION  2
 #define FIRMATA_FIRMWARE_MINOR_VERSION  5
-#define FIRMATA_FIRMWARE_BUGFIX_VERSION 1
+#define FIRMATA_FIRMWARE_BUGFIX_VERSION 4
 
 /* DEPRECATED as of Firmata v2.5.1. As of 2.5.1 there are separate version numbers for
  * the protocol version and the firmware version.
@@ -115,6 +115,7 @@
 #define ONEWIRE                 0x07 // same as PIN_MODE_ONEWIRE
 #define STEPPER                 0x08 // same as PIN_MODE_STEPPER
 #define ENCODER                 0x09 // same as PIN_MODE_ENCODER
+#define IGNORE                  0x7F // same as PIN_MODE_IGNORE
 
 extern "C" {
   // callback function types
@@ -139,9 +140,12 @@ class FirmataClass
     void printFirmwareVersion(void);
     //void setFirmwareVersion(byte major, byte minor);  // see macro below
     void setFirmwareNameAndVersion(const char *name, byte major, byte minor);
+    void disableBlinkVersion();
     /* serial receive handling */
     int available(void);
     void processInput(void);
+    void parse(unsigned char value);
+    boolean isParsingMessage(void);
     /* serial send handling */
     void sendAnalog(byte pin, int value);
     void sendDigital(byte pin, int value); // TODO implement this
@@ -156,6 +160,13 @@ class FirmataClass
     void attach(byte command, stringCallbackFunction newFunction);
     void attach(byte command, sysexCallbackFunction newFunction);
     void detach(byte command);
+
+    /* access pin state and config */
+    byte getPinMode(byte pin);
+    void setPinMode(byte pin, byte config);
+    /* access pin state */
+    int getPinState(byte pin);
+    void setPinState(byte pin, int state);
 
     /* utility methods */
     void sendValueAsTwo7bitBytes(int value);
@@ -175,6 +186,10 @@ class FirmataClass
     /* sysex */
     boolean parsingSysex;
     int sysexBytesRead;
+    /* pin configuration */
+    byte pinConfig[TOTAL_PINS];
+    int pinState[TOTAL_PINS];
+
     /* callback functions */
     callbackFunction currentAnalogCallback;
     callbackFunction currentDigitalCallback;
@@ -185,6 +200,8 @@ class FirmataClass
     systemResetCallbackFunction currentSystemResetCallback;
     stringCallbackFunction currentStringCallback;
     sysexCallbackFunction currentSysexCallback;
+
+    boolean blinkVersionDisabled;
 
     /* private methods ------------------------------ */
     void processSysexMessage(void);

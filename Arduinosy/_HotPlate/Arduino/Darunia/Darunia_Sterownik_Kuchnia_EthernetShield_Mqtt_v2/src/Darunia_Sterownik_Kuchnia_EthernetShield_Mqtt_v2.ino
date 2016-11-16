@@ -12,14 +12,17 @@
 #include "StatusLed.h"
 #include "MqttSensor.h"
 
-//#define DEBUG 1
+#define DEBUG 1
 
 void ftoa(float Value, char* Buffer);
 void callback(char* topic, byte* payload, unsigned int length);
 
-byte mac[]    = {  0xBA, 0xCA, 0xF1, 0xFA, 0x11, 0xC1 };  // Kuchnia
-byte ip[]     = { 192, 168, 17, 31 };                     // Kuchnia
-byte server[] = { 192, 168, 17, 30 };
+byte mac[]    = {  0x10, 0x0B, 0xA9, 0xD3, 0x01, 0xC1 };  // Kuchnia
+// byte ip[]     = { 192, 168, 17, 31 };                     // Kuchnia
+// byte server[] = { 192, 168, 17, 30 };
+
+byte ip[]     = { 192, 168, 0, 228 };                     // Kuchnia
+byte server[] = { 192, 168, 0, 142 };
 long lastMqttReconnectAttempt = 0;
 
 EthernetClient ethClient;
@@ -50,7 +53,7 @@ void setup() {
   #endif
 
   Ethernet.begin(mac, ip);
-  delay(2000);
+  delay(1000);
   mqttConnect();
 
   //Smooth dimming interrupt init
@@ -59,6 +62,8 @@ void setup() {
   StatusLed.setMode(statusled::poweron);
   wdt_enable(WDTO_4S);
   lastMqttReconnectAttempt = 0;
+
+  delay(200);
 }
 /////////////////////////////////////////////END SETUP/////////////////////////////////////////////////
 
@@ -173,18 +178,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
   topic_int = atoi(topic);
   int data_int  = atoi((char *) p);
 
-  for (int i = 0; i < ROLLER_COUNT; ++i)
-  {
-    roller& RollerTemp = *(RollerTab[i]);
-
-    if (topic_int == RollerTemp.getTopic())
-    {
-      bool state = (data == 'U' || data == 'D') ? ROLLER_ON : ROLLER_OFF;
-      bool direction = (data == 'U' ? ROLLER_UP : ROLLER_DOWN);
-      RollerTemp.setState(state, direction);
-    }
-  }
-
   if (MQTT_ALL_ROLETS == topic_int)
   {
     bool state = (data == 'U' || data == 'D') ? ROLLER_ON : ROLLER_OFF;
@@ -198,6 +191,20 @@ void callback(char* topic, byte* payload, unsigned int length) {
   else if (topic_int == MQTT_SUBSCRIBE)
   {
     sendAllSubscribers();
+  }
+  else
+  {
+    for (int i = 0; i < ROLLER_COUNT; ++i)
+    {
+      roller& RollerTemp = *(RollerTab[i]);
+
+      if (topic_int == RollerTemp.getTopic())
+      {
+        bool state = (data == 'U' || data == 'D') ? ROLLER_ON : ROLLER_OFF;
+        bool direction = (data == 'U' ? ROLLER_UP : ROLLER_DOWN);
+        RollerTemp.setState(state, direction);
+      }
+    }
   }
 
   // Free the memory
@@ -232,7 +239,8 @@ void sendMqtt(int topic, float value)
 
 boolean mqttConnect()
 {
-  if (client.connect("Kuchnia", "admin_kuchnia", "Isb_C4OGD4c1")) // Kuchnia
+  if (client.connect("Kuchnia", "admin", "Isb_C4OGD4c3")) // Kuchnia
+     //(client.connect("Kuchnia", "admin_kuchnia", "Isb_C4OGD4c1")) // Kuchnia
   {
     Serial.println("Connected");
     delay(2000);

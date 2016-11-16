@@ -2,7 +2,6 @@
 #define UPTIME_H
 
 #include <PubSubClient.h>
-#include <mqtt.h>
 
 class MQTT;
 
@@ -10,8 +9,8 @@ class uptime
 {
 	enum EInterfaceType
 	{
-		EthernetShield = 0,
-		ESP8266        = 1
+		EEthernetShield = 0,
+		EESP8266        = 1
 	};
 
 private:
@@ -23,6 +22,7 @@ private:
   const int m_interfaceType;
 
 public:
+  uptime(int topic);
   uptime(int topic, PubSubClient* client);
   uptime(int topic, MQTT* client);
 

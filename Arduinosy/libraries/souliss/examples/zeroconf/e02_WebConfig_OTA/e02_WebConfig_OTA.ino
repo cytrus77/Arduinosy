@@ -13,11 +13,15 @@
  
 ***************************************************************************/
 
+// Let the IDE point to the Souliss framework
+#include "SoulissFramework.h"
+
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 #include <EEPROM.h>
 #include <WiFiUdp.h>
+#include <ArduinoOTA.h>
 
 // Configure the Souliss framework
 #include "bconf/MCU_ESP8266.h"              // Load the code directly on the ESP8266
@@ -31,9 +35,6 @@
    
 #define MYLED               0
 uint8_t GPIO_POUT = 15;  //GPIO15
-
-// Setup the libraries for Over The Air Update
-OTA_Setup();
 
 void setup()
 {
@@ -74,7 +75,8 @@ void setup()
     Set_DimmableLight(MYLED);
 	
     // Init the OTA
-    OTA_Init();    
+    ArduinoOTA.setHostname("souliss-nodename");    
+    ArduinoOTA.begin(); 
 }
 
 void loop()
@@ -107,5 +109,5 @@ void loop()
     } 
 
     // Look for a new sketch to update over the air
-    OTA_Process();	
+    ArduinoOTA.handle();	
 }    

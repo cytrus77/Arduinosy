@@ -36,15 +36,15 @@ void mqttSensor::doMeasure()
     if(m_invertedScale) m_value = map(tempValue, 0, 1024, 100, 0);
     else                m_value = map(tempValue, 0, 1024, 0, 100);
   }
-  else if (m_inputType == DIGITALTYPE) 
+  else if (m_inputType == DIGITALTYPE)
   {
     digitalRead(m_pin);
     m_value = digitalRead(m_pin);
-	#ifdef DEBUG
-	Serial.print("DIGITAL - tempValue=");
-	Serial.println(m_value);
-	#endif
-	if(m_invertedScale) m_value = !m_value;
+  	#ifdef DEBUG
+  	Serial.print("DIGITAL - tempValue=");
+  	Serial.println(m_value);
+  	#endif
+	  if(m_invertedScale) m_value = !m_value;
   }
 
   if(old_value != m_value)
@@ -103,3 +103,12 @@ bool mqttSensor::doMeasureIfItsTime()
 	}
 }
 
+EInputType mqttSensor::getInputType()
+{
+  return m_inputType;
+}
+
+EScaleType mqttSensor::getScaleType()
+{
+  return m_invertedScale;
+}

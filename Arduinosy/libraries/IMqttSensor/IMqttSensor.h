@@ -10,6 +10,8 @@
 typedef MQTT PubSubClient;
 #endif
 
+#include "Utils.h"
+
 class IMqttSensor
 {
 protected:
@@ -20,11 +22,11 @@ protected:
   unsigned long m_sendPeriod;
   unsigned long m_sendTimer;
   PubSubClient* m_mqttClient;
-  
+
 public:
   IMqttSensor(int topic, PubSubClient* client, unsigned long send_period);
   virtual ~IMqttSensor();
-  
+
   virtual void processTimer();
   virtual bool isItTimeToSend();
   virtual bool isValueChanged();
@@ -35,7 +37,8 @@ public:
   virtual bool sendDataIfItsTime();
   virtual bool sendDataIfItsTimeAndValueChanged();
   virtual void sendMqttPacket(int topic, int value);
-  
+  virtual void sendMqttPacket(int topic, float value);
+
   virtual int getMqttTopic();
   virtual int getValue();
   virtual int* getValuePtr();
@@ -43,8 +46,3 @@ public:
 };
 
 #endif
-
-
-
-
-

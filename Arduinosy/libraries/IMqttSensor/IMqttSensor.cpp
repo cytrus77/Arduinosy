@@ -5,6 +5,7 @@
 #endif
 
 #include "IMqttSensor.h"
+//#include "Utils.h"
 
 #define DEBUG 1
 
@@ -119,9 +120,24 @@ void IMqttSensor::sendMqttPacket(int topic, int value)
   itoa(topic, topicChar, 10);
   itoa(value, dataChar, 10);
   m_mqttClient->publish(topicChar, dataChar);
-  
+
   #ifdef DEBUG
-  Serial.println("Sending MQTT");
+  Serial.println("Sending MQTT int");
+  Serial.println(topicChar);
+  Serial.println(dataChar);
+  #endif
+}
+
+void IMqttSensor::sendMqttPacket(int topic, float value)
+{
+  char topicChar[6];
+  char dataChar[8];
+  itoa(topic, topicChar, 10);
+  ftoa(value, dataChar);
+  m_mqttClient->publish(topicChar, dataChar);
+
+  #ifdef DEBUG
+  Serial.println("Sending MQTT float");
   Serial.println(topicChar);
   Serial.println(dataChar);
   #endif

@@ -26,7 +26,7 @@ void statusled::turnOn()
     digitalWrite(m_pin, m_state);
   }
 }
-  
+
 void statusled::turnOff()
 {
   if (m_state != LED_OFF)
@@ -48,15 +48,15 @@ void statusled::setMode(led_mode mode)
       case poweron:
       m_period = 0xFFFFFFFF;
       break;
-    
+
       case offline:
       m_period = 2 * 1000000 / m_timer_duty_cycle;
       break;
-    
+
       case online:
-      m_period = 5 * 100000 / m_timer_duty_cycle;
+      m_period = 2 * 100000 / m_timer_duty_cycle;
       break;
-    
+
       default:
       break;
     }
@@ -71,7 +71,7 @@ bool statusled::getState()
 }
 
 void statusled::processTimer()
-{ 
+{
   if (m_mode == off)
   {
     turnOff();

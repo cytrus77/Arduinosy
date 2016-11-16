@@ -20,18 +20,19 @@ class mqttSensor : public IMqttSensor
 {
 private:
   int  m_pin;
-  bool m_invertedScale;
-  bool m_inputType;
+  EScaleType m_invertedScale;
+  EInputType m_inputType;
 
 public:
   mqttSensor(int topic, PubSubClient* client, int pin, EInputType inputType, EScaleType invertedScale, unsigned long send_period);
   virtual ~mqttSensor();
-  
+
   void doMeasure();
   bool doMeasureIfItsTime();
   bool doMeasureAndSendDataIfItsTime();
   bool doMeasureAndSendDataIfItsTimeAndValueChanged();
+	EInputType getInputType();
+	EScaleType getScaleType();
 };
 
 #endif
-

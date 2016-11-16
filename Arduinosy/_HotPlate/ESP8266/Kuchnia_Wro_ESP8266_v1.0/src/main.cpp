@@ -3,23 +3,18 @@
 #include <PubSubClient.h>
 
 //added
-#include "TimerOne.h"
-#include "avr/wdt.h"
 #include <string.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include <dht.h>
 
 //#include "Defines.h"
 #include "DimmerPir.h"
-#include "Uptime.h"
 
 #define wifi_ssid "cytrynowa_wro"
 #define wifi_password "limonkowy"
 
-#define mqtt_server "192.168.0.142"
-#define mqtt_user "admin_ctr"
-#define mqtt_password "zuzaMeduza"
+#define mqtt_user "admin"
+#define mqtt_password "Isb_C4OGD4c3"
 
 #define MQTT_UPTIME        9003
 #define MQTT_DIMMER        9301
@@ -30,8 +25,10 @@
 #define ANALOG_PIN         A0
 #define SMOKE_PIN          D7
 
+byte mqtt_server[] = { 192, 168, 0, 142 };
 
 void callback(char* topic, byte* payload, unsigned int length);
+void timerLoop();
 void setup_wifi();
 
 WiFiClient espClient;
@@ -91,10 +88,14 @@ bool checkSmoke()
 void setup()
 {
   Serial.begin(115200);
+  Serial.println("Starting");
   setup_wifi();
   pinMode(ANALOG_PIN, INPUT_PULLUP);
   pinMode(SMOKE_PIN, INPUT_PULLUP);
-//  client.setServer(mqtt_server, 1883);
+  pinMode(D5, OUTPUT);
+
+  client.setServer(mqtt_server, 1883);
+  Serial.println("Started");
 }
 
 void setup_wifi()
@@ -126,7 +127,7 @@ void reconnect() {
     // Attempt to connect
     // If you do not want to use a username and password, change next line to
     // if (client.connect("ESP8266Client")) {
-    if (client.connect("ESP8266Client", mqtt_user, mqtt_password)) {
+    if (client.connect("DuzyWiFi", mqtt_user, mqtt_password)) {
       Serial.println("connected");
       char topicChar[6];
       itoa(MQTT_DIMMER, topicChar, 10);
@@ -162,7 +163,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   topic_int = atoi(topic);
   int data_int  = atoi((char *) p);
 
-  analogWrite(DIMMER_PIN, data_int * data_int / 10);
+  analogWrite(D5, data_int * data_int / 40);
 
   // Free the memory
   free(p);

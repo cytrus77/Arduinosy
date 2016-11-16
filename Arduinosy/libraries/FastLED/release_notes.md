@@ -1,7 +1,15 @@
-FastLED3.1.2pre
+FastLED3.1.3
 ===============
 
 * Add SK6822 timings
+* Add ESP8266 support - note, only tested w/the arduino esp8266 build environment 
+* Improvements to hsv2rgb, palette, and noise performance
+* Improvements to rgb2hsv accuracy
+* Fixed noise discontinuity 
+* Add wino board support
+* Fix scale8 (so now, scale8(255,255) == 255, not 254!)
+* Add ESP8266 parallel output support 
+
 
 FastLED3.1.1
 ============

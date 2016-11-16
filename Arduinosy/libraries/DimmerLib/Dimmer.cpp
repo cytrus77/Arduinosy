@@ -6,31 +6,41 @@
 
 #include "Dimmer.h"
 
-//#define DEBUG
 
 dimmer::dimmer(int pin, int mqttTopic)
   : m_setValue(0),
     m_mqttTopic(mqttTopic),
     m_mqttTimeoutTopic(0),
+    m_cyclesInSecond(0),
     m_timeout(0),
     m_timer(0),
     m_currentValue(0),
     m_pin(pin)
 {
-  pinMode(m_pin, OUTPUT);
-  analogWrite(m_pin, m_setValue);
+  setupHw();
 }
 
-dimmer::dimmer(int pin, int mqttTopic, int mqttTimeoutTopic, unsigned long timeout)
+dimmer::dimmer(int pin, int mqttTopic, int mqttTimeoutTopic, unsigned long timeout, unsigned long cyclesInSecond)
   : m_setValue(0),
     m_mqttTopic(mqttTopic),
     m_mqttTimeoutTopic(mqttTimeoutTopic),
+    m_cyclesInSecond(cyclesInSecond),
     m_timeout(timeout),
-    m_timer(timeout),
+    m_timer(timeout * cyclesInSecond),
     m_currentValue(0),
     m_pin(pin)
 {
+  setupHw();
+}
+
+void dimmer::setupHw()
+{
   pinMode(m_pin, OUTPUT);
+  #ifdef ESP8266
+  analogWriteFreq(500);
+  analogWriteRange(255);
+  digitalWrite(m_pin, 0);
+  #endif
   analogWrite(m_pin, m_setValue);
 }
 
@@ -42,11 +52,6 @@ void dimmer::setDimmer()
     else if (m_currentValue > m_setValue) --m_currentValue;
 
     analogWrite(m_pin, m_currentValue*m_currentValue/255);
-
-    #ifdef DEBUG
-    Serial.print("Dimmer value=");
-    Serial.println(m_currentValue);
-    #endif
   }
 }
 
@@ -57,11 +62,6 @@ void dimmer::setValue(int value)
   else if (value > 100)          m_setValue = 255;
 
   resetTimer();
-
-  #ifdef DEBUG
-  Serial.print("Dimmer value changed =");
-  Serial.println(m_setValue);
-  #endif
 }
 
 void dimmer::setTimeout(unsigned long timeout)
@@ -71,12 +71,12 @@ void dimmer::setTimeout(unsigned long timeout)
     m_timeout = timeout;
   }
 
-  m_timer = m_timeout;
+  m_timer = m_timeout * m_cyclesInSecond;
 }
 
 void dimmer::resetTimer()
 {
-  m_timer = m_timeout;
+  m_timer = m_timeout * m_cyclesInSecond;
 }
 
 int dimmer::getMqttTopic()
@@ -94,7 +94,12 @@ int dimmer::getValue()
   return m_setValue;
 }
 
-void dimmer::processTimer()
+int dimmer::getCurrentValue()
+{
+  return m_currentValue;
+}
+
+void dimmer::processTimer(const unsigned int newValue)
 {
   if (m_timeout)
   {
@@ -104,7 +109,7 @@ void dimmer::processTimer()
   	}
   	else
   	{
-  	  setValue(0);
+  	  setValue(newValue);
   	}
   }
 }

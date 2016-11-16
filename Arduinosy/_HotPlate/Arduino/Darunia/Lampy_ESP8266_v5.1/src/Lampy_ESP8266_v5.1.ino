@@ -23,13 +23,13 @@
 
 void ftoa(float Value, char* Buffer);
 
-const char* ssid = "Darunia_i_Tobik";
-const char* password = "tobiasz1986";
-char server[] = "192.168.17.30";
+// const char* ssid = "Darunia_i_Tobik";
+// const char* password = "tobiasz1986";
+// char server[] = "192.168.17.30";
 
-//const char* ssid = "cytrynowa_wro";
-//const char* password = "limonkowy";
-//char server[] = "192.168.0.142";
+const char* ssid = "cytrynowa_wro";
+const char* password = "limonkowy";
+char server[] = "192.168.0.142";
 
 SoftwareSerial debugPort(2, 3); // RX, TX
 ESP esp(&Serial, &debugPort, 4);
@@ -49,7 +49,7 @@ void wifiCb(void* response)
   if(res.getArgc() == 1) {
     res.popArgs((uint8_t*)&status, 4);
     if(status == STATION_GOT_IP) {
-      mqtt.connect(server, 1883, false);       
+      mqtt.connect(server, 1883, false);
       debugPort.println("WIFI CONNECTED");
       wifiConnected = true;
     } else {
@@ -142,7 +142,7 @@ void loop() {
   esp.process();
   wdt_reset();
 
-  if(wifiConnected) 
+  if(wifiConnected)
   {
       Uptime.getUptime();
       Uptime.sendIfChanged();
@@ -150,7 +150,7 @@ void loop() {
   else
   {
 //     debugPort.println("Disconnected");
-  }   
+  }
 }
 
 /**************************************************
@@ -163,7 +163,7 @@ void loop() {
  *    parameters:
  *            - Buffer must be 8 chars long
  *            - 3 digits precision max
- *            - absolute range is -524,287 to 524,287 
+ *            - absolute range is -524,287 to 524,287
  *            - resolution (epsilon) is 0.125 and
  *              always rounds down
  **************************************************/
@@ -172,22 +172,22 @@ void loop() {
      union
      {
          float f;
-     
+
          struct
          {
              unsigned int    mantissa_lo : 16;
-             unsigned int    mantissa_hi : 7;    
+             unsigned int    mantissa_hi : 7;
              unsigned int     exponent : 8;
              unsigned int     sign : 1;
          };
      } helper;
-     
+
      unsigned long mantissa;
      signed char exponent;
      unsigned int int_part;
      char frac_part[3];
      int i, count = 0;
-     
+
      helper.f = Value;
      //mantissa is LS 23 bits
      mantissa = helper.mantissa_lo;
@@ -196,7 +196,7 @@ void loop() {
      mantissa += 0x00800000;
      //exponent is biased by 127
      exponent = (signed char) helper.exponent - 127;
-     
+
      //too big to shove into 8 chars
      if (exponent > 18)
      {
@@ -206,7 +206,7 @@ void loop() {
          Buffer[3] = '\0';
          return;
      }
-     
+
      //too small to resolve (resolution of 1/8)
      if (exponent < -3)
      {
@@ -214,36 +214,36 @@ void loop() {
          Buffer[1] = '\0';
          return;
      }
-     
+
      count = 0;
-     
+
      //add negative sign (if applicable)
      if (helper.sign)
      {
          Buffer[0] = '-';
          count++;
      }
-     
+
      //get the integer part
-     int_part = mantissa >> (23 - exponent);    
+     int_part = mantissa >> (23 - exponent);
      //convert to string
      itoa(int_part, &Buffer[count], 10);
-     
+
      //find the end of the integer
      for (i = 0; i < 8; i++)
          if (Buffer[i] == '\0')
          {
              count = i;
              break;
-         }        
- 
-     //not enough room in the buffer for the frac part    
+         }
+
+     //not enough room in the buffer for the frac part
      if (count > 5)
          return;
-     
-     //add the decimal point    
+
+     //add the decimal point
      Buffer[count++] = '.';
-     
+
      //use switch to resolve the fractional part
      switch (0x7 & (mantissa  >> (20 - exponent)))
      {
@@ -255,45 +255,45 @@ void loop() {
          case 1:
              frac_part[0] = '1';
              frac_part[1] = '2';
-             frac_part[2] = '5';            
+             frac_part[2] = '5';
              break;
          case 2:
              frac_part[0] = '2';
              frac_part[1] = '5';
-             frac_part[2] = '0';            
+             frac_part[2] = '0';
              break;
          case 3:
              frac_part[0] = '3';
              frac_part[1] = '7';
-             frac_part[2] = '5';            
+             frac_part[2] = '5';
              break;
          case 4:
              frac_part[0] = '5';
              frac_part[1] = '0';
-             frac_part[2] = '0';            
+             frac_part[2] = '0';
              break;
          case 5:
              frac_part[0] = '6';
              frac_part[1] = '2';
-             frac_part[2] = '5';            
+             frac_part[2] = '5';
              break;
          case 6:
              frac_part[0] = '7';
              frac_part[1] = '5';
-             frac_part[2] = '0';            
+             frac_part[2] = '0';
              break;
          case 7:
              frac_part[0] = '8';
              frac_part[1] = '7';
-             frac_part[2] = '5';                    
+             frac_part[2] = '5';
              break;
      }
-     
+
      //add the fractional part to the output string
      for (i = 0; i < 3; i++)
          if (count < 7)
              Buffer[count++] = frac_part[i];
-     
+
      //make sure the output is terminated
      Buffer[count] = '\0';
  }
