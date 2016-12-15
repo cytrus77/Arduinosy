@@ -71,7 +71,7 @@ void uptime::sendIfChanged()
   	else if (m_interfaceType == EESP8266)
   	{
       #ifndef ESP8266
-      m_espMqttClient->publish(topicChar, dataChar);
+  //    m_espMqttClient->publish(topicChar, dataChar);
       #endif
   	}
 

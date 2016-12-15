@@ -7,7 +7,7 @@
 #define MAX_ROLLER_TIMEOUT 30  // in secunds
 #define INT_TIMER_PERIOD   100000 // in us
 #define ROLLER_TIMEOUT     MAX_ROLLER_TIMEOUT * 1000000 / INT_TIMER_PERIOD
-
+#define SENSOR_PERIOD      100000
 
 #ifdef KUCHNIA
 
@@ -91,5 +91,3 @@
 #endif
 
 #endif
-
-

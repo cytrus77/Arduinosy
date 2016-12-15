@@ -17,12 +17,12 @@
 void ftoa(float Value, char* Buffer);
 void callback(char* topic, byte* payload, unsigned int length);
 
-byte mac[]    = {  0x10, 0x0B, 0xA9, 0xD3, 0x01, 0xC1 };  // Kuchnia
-// byte ip[]     = { 192, 168, 17, 31 };                     // Kuchnia
-// byte server[] = { 192, 168, 17, 30 };
+byte mac[]    = {  0x10, 0x0B, 0xA9, 0xD3, 0x1A, 0xE6 };  // Kuchnia
+byte ip[]     = { 192, 168, 17, 31 };                     // Kuchnia
+byte server[] = { 192, 168, 17, 30 };
 
-byte ip[]     = { 192, 168, 0, 228 };                     // Kuchnia
-byte server[] = { 192, 168, 0, 142 };
+// byte ip[]     = { 192, 168, 0, 228 };                     // Kuchnia
+// byte server[] = { 192, 168, 0, 142 };
 long lastMqttReconnectAttempt = 0;
 
 EthernetClient ethClient;
