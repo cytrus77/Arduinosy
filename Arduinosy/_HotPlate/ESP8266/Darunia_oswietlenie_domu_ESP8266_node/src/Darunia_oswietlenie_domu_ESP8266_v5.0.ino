@@ -9,6 +9,7 @@
 #include "Uptime.h"
 #include "pwm.h"
 #include "Utils.h"
+#include <DallasTemperature.h>
 
 
 #define DEBUG 1
@@ -16,16 +17,16 @@
 void ftoa(float Value, char* Buffer);
 void callback(char* topic, byte* payload, unsigned int length);
 
-#define mqtt_login "Zewnetrzne_osw"
-#define mqtt_user "admin"
-#define mqtt_password "Isb_C4OGD4c3"
+#define mqtt_login     "Zewnetrzne_osw"
+#define mqtt_user      "admin"
+#define mqtt_password  "Isb_C4OGD4c3"
 
-// const char* ssid = "Darunia_i_Tobik";
-// const char* password = "tobiasz1986";
-// byte server[] = { 192, 168, 17, 30 };
-#define wifi_ssid "cytrynowa_wro"
-#define wifi_password "limonkowy"
-byte server[] = { 192, 168, 0, 142 };
+#define wifi_ssid "Darunia_i_Tobik"
+#define wifi_password "tobiasz1986"
+byte server[] = { 192, 168, 17, 30 };
+// #define wifi_ssid "cytrynowa_wro"
+// #define wifi_password "limonkowy"
+// byte server[] = { 192, 168, 0, 142 };
 
 long lastMqttReconnectAttempt = 0;
 
@@ -36,29 +37,35 @@ statusled StatusLed(STATUSLEDPIN, statusled::off, INT_TIMER_PERIOD);
 uptime Uptime(MQTT_UPTIME, &client);
 dimmer ledDimmer(DIMMERPIN, MQTT_DIMMER, MQTT_DIMMET_TIMEOUT, DIMMER_TIMEOUT, CYCLES_PER_SECOND);
 
+OneWire oneWire(DS18B20PIN);
+DallasTemperature ds18b20(&oneWire);
+int ds18b20timer = 0;
+
 void setup_wifi(void);
 boolean mqttConnect(void);
 void TimerLoop(void);
 void sendAllSubscribers(void);
 
 /////////////////////////////////////////////START SETUP/////////////////////////////////////////////////
-void setup() {
+void setup()
+{
   #ifdef DEBUG
   Serial.begin(115200);
   Serial.println("setup()");
   #endif
+
+  StatusLed.setMode(statusled::poweron);
+  pinMode(RELAYPIN, OUTPUT);
+  digitalWrite(RELAYPIN, HIGH);
+  setup_wifi();
+  //Smooth dimming interrupt init
+  lastMqttReconnectAttempt = 0;
 
   noInterrupts();
   timer0_isr_init();
   timer0_attachInterrupt(TimerLoop);
   timer0_write(ESP.getCycleCount() + TIMER_PERIOD_NODEMCU);
   interrupts();
-
-  StatusLed.setMode(statusled::poweron);
-
-  setup_wifi();
-  //Smooth dimming interrupt init
-  lastMqttReconnectAttempt = 0;
 
   Serial.println("StartedX");
 
@@ -100,6 +107,12 @@ void loop()
     Uptime.sendIfChanged();
 
     StatusLed.setMode(statusled::online);
+
+    if (ds18b20timer > (CYCLES_PER_SECOND * 60))
+    {
+      measureTempAndSend();
+      ds18b20timer = 0;
+    }
   }
   else
   {
@@ -129,7 +142,36 @@ void TimerLoop()
   ledDimmer.processTimer();
   StatusLed.processTimer();
 
+  if (ledDimmer.getCurrentValue() == 0)
+  {
+    digitalWrite(RELAYPIN, HIGH);
+  }
+
+  ++ds18b20timer;
+
   timer0_write(ESP.getCycleCount() + TIMER_PERIOD_NODEMCU);
+}
+
+void measureTempAndSend()
+{
+  ds18b20.requestTemperatures();
+  float temp = ds18b20.getTempCByIndex(0);
+  sendMqtt(MQTT_TEMP, temp);
+}
+
+void sendMqtt(int topic, float value)
+{
+  char topicChar[6];
+  char dataChar[8];
+  itoa(topic, topicChar, 10);
+  ftoa(value, dataChar);
+  client.publish(topicChar, dataChar);
+
+  #ifdef DEBUG
+  Serial.println("Sending MQTT float");
+  Serial.println(topicChar);
+  Serial.println(dataChar);
+  #endif
 }
 
 void sendMqtt(int topic, int value)
@@ -140,9 +182,11 @@ void sendMqtt(int topic, int value)
   itoa(value, dataChar, 10);
   client.publish(topicChar, dataChar);
 
+  #ifdef DEBUG
   Serial.println("Sending MQTT");
   Serial.println(topicChar);
   Serial.println(dataChar);
+  #endif
 }
 
 boolean mqttConnect()
@@ -194,6 +238,21 @@ void callback(char* topic, byte* payload, unsigned int length)
   if (topic_int == ledDimmer.getMqttTopic())
   {
     ledDimmer.setValue(data_int);
+
+    if (data_int == 0)
+    {
+      #ifdef DEBUG
+      Serial.println("RELAY - HIGH");
+      #endif
+    }
+    else
+    {
+      digitalWrite(RELAYPIN, LOW);
+
+      #ifdef DEBUG
+      Serial.println("RELAY - LOW");
+      #endif
+    }
   }
   else if (topic_int == ledDimmer.getTimeoutMqttTopic())
   {

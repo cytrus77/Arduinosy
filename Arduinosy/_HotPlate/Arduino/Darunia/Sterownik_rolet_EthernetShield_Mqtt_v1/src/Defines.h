@@ -1,8 +1,8 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
-//#define PODDASZE
-#define KUCHNIA
+#define PODDASZE
+//#define KUCHNIA
 
 #define MAX_ROLLER_TIMEOUT 30  // in secunds
 #define INT_TIMER_PERIOD   100000 // in us

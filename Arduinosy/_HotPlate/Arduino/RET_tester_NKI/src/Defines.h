@@ -2,9 +2,15 @@
 
 #include <Ethernet.h>
 
+#define RS485_RX_DIRECTION_PIN 2   //RS485 Direction control
+#define RS485_TX_DIRECTION_PIN 3   //RS485 Direction control
+
+#define RS485Transmit    HIGH
+#define RS485Receive     LOW
+
 #define MSG_BUFFER_SIZE   10
 #define SERIAL_TIMEOUT    20   // 20ms
-#define MAX_STRING_LENGTH 20
+#define MAX_STRING_LENGTH 25
 #define TIMER0_PERIOD     50000 // in us
 #define TIMER_COUNT_1S    1000000/TIMER0_PERIOD
 #define TIMER_COUNT_2S    2*TIMER_COUNT_1S

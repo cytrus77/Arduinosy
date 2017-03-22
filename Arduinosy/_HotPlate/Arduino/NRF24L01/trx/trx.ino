@@ -2,9 +2,9 @@
 #include <nRF24L01.h>
 #include <RF24.h>
 
-RF24 radio(7, 8);
+RF24 radio(9, 10);
 
-const byte rxAddrBrdc[6] = "00000";
+const byte rxAddrBrdc[6] = "00009";
 const byte rxAddr1[6] = "00001";
 const byte rxAddr2[6] = "00002";
 

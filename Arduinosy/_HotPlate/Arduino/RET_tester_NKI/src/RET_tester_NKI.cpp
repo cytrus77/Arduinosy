@@ -3,18 +3,35 @@
 #include "TimerOne.h"
 #include "Defines.h"
 
+void setRs485Direction(bool direction)
+{
+  digitalWrite(RS485_RX_DIRECTION_PIN, direction);
+  digitalWrite(RS485_TX_DIRECTION_PIN, direction);
+}
+
 void changeRs485Mode(ERs485State newState)
 {
   rs485State = newState;
   addRefeshSection = true;
+
+  if (Rs485RxTest == rs485State)
+  {
+    setRs485Direction(RS485Transmit);
+  }
+  else
+  {
+    setRs485Direction(RS485Receive);
+  }
 }
 
 void serialWriteString()
 {
   if (sendString)
   {
+    setRs485Direction(RS485Transmit);
     Serial.print(msgBuffer.readString[msgBuffer.counter]);
     sendString = false;
+    setRs485Direction(RS485Receive);
   }
 }
 
@@ -104,6 +121,10 @@ void setup()
 
   Timer1.initialize(TIMER0_PERIOD);
   Timer1.attachInterrupt(TimerLoop);
+
+  pinMode(RS485_RX_DIRECTION_PIN, OUTPUT);
+  pinMode(RS485_TX_DIRECTION_PIN, OUTPUT);
+  setRs485Direction(RS485Receive);
 
   changeRs485Mode(Rs485Loopback);
 }
