@@ -4,53 +4,65 @@
 #include "TimerOne.h"
 #include "Defines.h"
 
-void changeRelayState(ERelayState newState)
+void changeRelayState(SPort& port, ERelayState newState)
 {
-  static ERelayState state = On;
-
-  if (state != newState)
+  if (port.relayState != newState)
   {
-    digitalWrite(RELAY_PIN, newState == On ? false : true);
-    state = newState;
+    digitalWrite(port.relayPin, newState == On ? false : true);
+    port.relayState = newState;
+
+    #ifdef DEBUG
+      Serial.print("port: ");
+      Serial.print(port.relayPin);
+      Serial.print(" relayState:");
+      Serial.println(port.relayState);
+    #endif
   }
 }
 
-void changeShortCircuitState(EShortCircuitState newState)
+void changeShortCircuitState(SPort& port, EShortCircuitState newState)
 {
-  shortCircuitState = newState;
+  port.shortState = newState;
 
-  switch (shortCircuitState)
+  switch (port.shortState)
   {
     case ShortCircuit2s:
     case ShortCircuit5s:
-      timerCounter = 1;
-      changeRelayState(On);
+      port.timer = 1;
+      changeRelayState(port, On);
       break;
 
     case ShortCircuitPerm:
-      timerCounter = 0;
-      changeRelayState(On);
+      port.timer = 0;
+      changeRelayState(port, On);
       break;
 
     case ShortCircuitOff:
     default:
-      timerCounter = 0;
-      changeRelayState(Off);
+      port.timer = 0;
+      changeRelayState(port, Off);
       break;
   }
+
+  #ifdef DEBUG
+    Serial.print("port: ");
+    Serial.print(port.relayPin);
+    Serial.print(" shortState:");
+    Serial.println(port.shortState);
+  #endif
 
   addRefeshSection = true;
 }
 
-float getDcVoltage()
+float getDcVoltage(SPort& port)
 {
-  int sensorReading = analogRead(A0);
+  int sensorReading = analogRead(port.dcVolPin);
   float dcVoltage = static_cast<float>(sensorReading)*2/100; ///1024*20;    // sensorValue/1024   - 1024=5V ->
 
   return dcVoltage;
 }
 
-void refreshSection(EthernetClient& client)
+void httpRefreshSection(EthernetClient& client)
 {
   if (addRefeshSection)
   {
@@ -68,9 +80,107 @@ void refreshSection(EthernetClient& client)
   }
 }
 
+void httpPortSection(EthernetClient& client, SPort& port, int portNo)
+{
+  client.print("<h2>Port: ");
+  client.print(portNo);
+  client.println("</h2>");
+  client.print("<a href=\"/?");
+  client.print(portNo);
+  client.println("_Off\"\">1. Normal</a>");
+  client.print("<a href=\"/?");
+  client.print(portNo);
+  client.println("_2s\"\">2. Short 2s</a>");
+  client.print("<a href=\"/?");
+  client.print(portNo);
+  client.println("_5s\"\">3. Short 5s</a>");
+  client.print("<a href=\"/?");
+  client.print(portNo);
+  client.println("_Perm\"\">4. Permanent short</a><br />");
+  client.println("<br />");
+  // DC Voltage section
+  client.print("<a style=\"background-color:#4DB257\">DC Voltage = ");  //
+  client.print(getDcVoltage(port));
+  client.println("V </a>");
+  // Short circuit section
+  client.print("<a style=\"background-color:#4DB257\">Short circuit mode: ");  //
+  client.print(port.shortState);
+  client.println("</a>");
+  client.println("<br />");
+}
+
+bool httpReadButton(String& readString, SPort& port, int portNo)
+{
+  bool ret = false;
+  String portStr = String(portNo, DEC);
+  String header = String("?" + portStr);
+  //controls the Arduino if you press the buttons
+  if (readString.indexOf(String(header + "_Off")) > 0)
+  {
+    changeShortCircuitState(port, ShortCircuitOff);
+    ret = true;
+  }
+  else if (readString.indexOf(String(header + "_2s")) > 0)
+  {
+    changeShortCircuitState(port, ShortCircuit2s);
+    ret = true;
+  }
+  else if (readString.indexOf(String(header + "_5s")) > 0)
+  {
+    changeShortCircuitState(port, ShortCircuit5s);
+    ret = true;
+  }
+  else if (readString.indexOf(String(header + "_Perm")) > 0)
+  {
+    changeShortCircuitState(port, ShortCircuitPerm);
+    ret = true;
+  }
+
+  return ret;
+}
+
+void processPort(SPort& port)
+{
+  switch (port.shortState)
+  {
+  case ShortCircuit2s:
+    if (port.timer > TIMER_COUNT_2S)
+    {
+      changeRelayState(port, Off);
+      changeShortCircuitState(port, ShortCircuitOff);
+    }
+    break;
+
+  case ShortCircuit5s:
+    if (port.timer > TIMER_COUNT_5S)
+    {
+      changeRelayState(port, Off);
+      changeShortCircuitState(port, ShortCircuitOff);
+    }
+    break;
+
+  case ShortCircuitOff:
+  case ShortCircuitPerm:
+  default:
+    break;
+  }
+}
+
 void TimerLoop()
 {
-  if (timerCounter) ++timerCounter;
+  for (int i = 0; i < NUM_OF_PORTS; ++i)
+  {
+    if (port[i].timer) ++port[i].timer;
+  }
+}
+
+void initPort(SPort& port)
+{
+  pinMode(port.relayPin, OUTPUT);
+  pinMode(port.dcVolPin, INPUT);
+
+  changeRelayState(port, Off);
+  changeShortCircuitState(port, ShortCircuitOff);
 }
 
 void setup()
@@ -85,9 +195,10 @@ void setup()
   Ethernet.begin(mac, ip, gateway, subnet);
   server.begin();
 
-  pinMode(RELAY_PIN, OUTPUT);
-  changeRelayState(Off);
-  changeShortCircuitState(ShortCircuitOff);
+  for (int i = 0; i < NUM_OF_PORTS; ++i)
+  {
+      initPort(port[i]);
+  }
 
   Timer1.initialize(TIMER0_PERIOD);
   Timer1.attachInterrupt(TimerLoop);
@@ -95,28 +206,9 @@ void setup()
 
 void loop()
 {
-  switch (shortCircuitState)
+  for (int i = 0; i < NUM_OF_PORTS; ++i)
   {
-  case ShortCircuit2s:
-    if (timerCounter > TIMER_COUNT_2S)
-    {
-      changeRelayState(Off);
-      changeShortCircuitState(ShortCircuitOff);
-    }
-    break;
-
-  case ShortCircuit5s:
-    if (timerCounter > TIMER_COUNT_5S)
-    {
-      changeRelayState(Off);
-      changeShortCircuitState(ShortCircuitOff);
-    }
-    break;
-
-  case ShortCircuitOff:
-  case ShortCircuitPerm:
-  default:
-    break;
+    processPort(port[i]);
   }
 
   // Create a client connection
@@ -130,7 +222,8 @@ void loop()
         char c = client.read();
 
         //read char by char HTTP request
-        if (readString.length() < 100) {
+        if (readString.length() < 100)
+        {
           //store characters to string
           readString += c;
          }
@@ -138,11 +231,13 @@ void loop()
          //if HTTP request has ended
          if (c == '\n')
          {
-           //controls the Arduino if you press the buttons
-           if (readString.indexOf("?buttonShortOff") >0)           changeShortCircuitState(ShortCircuitOff);
-           else if (readString.indexOf("?buttonShort2s") >0)       changeShortCircuitState(ShortCircuit2s);
-           else if (readString.indexOf("?buttonShort5s") >0)       changeShortCircuitState(ShortCircuit5s);
-           else if (readString.indexOf("?buttonShortPerm") >0)     changeShortCircuitState(ShortCircuitPerm);
+           for (int i = 0; i < NUM_OF_PORTS; ++i)
+           {
+             if (httpReadButton(readString, port[i], i))
+             {
+               break;
+             }
+           }
 
            //clearing string for next read
            readString="";
@@ -182,31 +277,23 @@ void loop()
             client.println("}");
             client.println("</style>");
 
-           refreshSection(client);
+           httpRefreshSection(client);
+
            client.println("<meta name='apple-mobile-web-app-capable' content='yes' />");
            client.println("<meta name='apple-mobile-web-app-status-bar-style' content='black-translucent' />");
 //           client.println("<link rel='stylesheet' type='text/css' href='http://randomnerdtutorials.com/ethernetcss.css' />");
            client.println("</head>");
            client.println("<body>");
-           client.println("<h1>RS-485 - RET tester</h1>");
+           client.println("<h1>RET tester - DC Short circuit test</h1>");
            client.println("<hr />");
            client.println("<br />");
-           client.println("<h2>DC Short circuit test</h2>");
-           client.println("<a href=\"/?buttonShortOff\"\">1. Normal</a>");
-           client.println("<a href=\"/?buttonShort2s\"\">2. Short for 2s</a>");
-           client.println("<a href=\"/?buttonShort5s\"\">3. Short for 5s</a>");
-           client.println("<a href=\"/?buttonShortPerm\"\">4. Permanent short</a><br />");
-           client.println("<br />");
-           client.println("<h2>RET Status</h2>");
-           // DC Voltage section
-           client.print("<a style=\"background-color:#4DB257\">DC Voltage = ");  //
-           client.print(getDcVoltage());
-           client.println("V </a>");
-           // Short circuit section
-           client.print("<a style=\"background-color:#4DB257\">Short circuit mode: ");  //
-           client.print(shortCircuitState);
-           client.println("</a>");
-           client.println("<br />");
+
+           // section with ports information - short control buttons and dc voltage status
+           for (int i = 0; i < NUM_OF_PORTS; ++i)
+           {
+             httpPortSection(client, port[i], i);
+           }
+
            client.println("</body>");
            client.println("</html>");
 
