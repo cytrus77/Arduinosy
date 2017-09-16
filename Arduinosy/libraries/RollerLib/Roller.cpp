@@ -6,12 +6,13 @@
 
 #include "Roller.h"
 
-roller::roller(int topic, int pin_up, int pin_down, unsigned long timeout_set)
+roller::roller(int topic, int pin_up, int pin_down, unsigned long timeout_set, ActiveState state)
 {
   m_state = ROLLER_OFF;
   m_topic = topic;
   m_pin_up   = pin_up;
   m_pin_down = pin_down;
+  m_activeState = state;
   m_roller_timeout = timeout_set;
   pinMode(m_pin_up, OUTPUT);
   pinMode(m_pin_down, OUTPUT);
@@ -22,7 +23,7 @@ roller::roller(int topic, int pin_up, int pin_down, unsigned long timeout_set)
 void roller::up()
 {
   m_timeout_timer = m_roller_timeout;
-  
+
   if (!((m_direction == ROLLER_UP) && (m_state == ROLLER_ON)))
   {
     m_state = ROLLER_ON;
@@ -95,7 +96,7 @@ bool roller::getState()
 void roller::checkTimeout()
 {
   if (m_state == ROLLER_ON)
-  {   
+  {
     --m_timeout_timer;
 
     if (m_timeout_timer <= 0)
@@ -104,5 +105,3 @@ void roller::checkTimeout()
     }
   }
 }
-
-

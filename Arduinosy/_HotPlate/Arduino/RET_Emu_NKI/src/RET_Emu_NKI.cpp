@@ -23,6 +23,7 @@ void resetUartBuffer()
 {
   hdlcStart = false;
   uartCounter = 0;
+  Timer1.stop();
 }
 
 void udpToUart()
@@ -49,8 +50,12 @@ void uartToUdp()
     uartBuffer[uartCounter] = Serial.read();
     if (uartBuffer[uartCounter] == HDLC_SS_BYTE)
     {
-      if (hdlcStart) sendIt = true;
-      else hdlcStart = true;
+      if (hdlcStart)sendIt = true;
+      else
+      {
+        hdlcStart = true;
+        Timer1.start();
+      }
     }
     else if (hdlcStart)
     {
@@ -81,6 +86,7 @@ void setup()
 
   Timer1.initialize(TIMER_PERIOD);
   Timer1.attachInterrupt(TimerLoop);
+  Timer1.stop();
 }
 
 void loop()

@@ -12,7 +12,7 @@
 // extern PubSubClient client;
 // extern
 uptime::uptime(int topic)
-  : m_mqttTopic(topic),
+  : m_mqttTopic(String(topic)),
     m_uptime(0),
     m_sendFlag(true),
     m_mqttClient(0),
@@ -22,6 +22,16 @@ uptime::uptime(int topic)
 }
 
 uptime::uptime(int topic, PubSubClient* client)
+  : m_mqttTopic(String(topic)),
+    m_uptime(0),
+    m_sendFlag(true),
+    m_mqttClient(client),
+  	m_espMqttClient(0),
+  	m_interfaceType(EEthernetShield)
+{
+}
+
+uptime::uptime(String topic, PubSubClient* client)
   : m_mqttTopic(topic),
     m_uptime(0),
     m_sendFlag(true),
@@ -32,7 +42,7 @@ uptime::uptime(int topic, PubSubClient* client)
 }
 
 uptime::uptime(int topic, MQTT* client)
-  : m_mqttTopic(topic),
+  : m_mqttTopic(String(topic)),
     m_uptime(0),
     m_sendFlag(true),
     m_mqttClient(0),
@@ -59,9 +69,9 @@ void uptime::sendIfChanged()
 {
   if (m_sendFlag)
   {
-    char topicChar[6];
-    char dataChar[6];
-    itoa(m_mqttTopic, topicChar, 10);
+    char topicChar[16];
+    char dataChar[10];
+    m_mqttTopic.toCharArray(topicChar, 10);
     itoa(m_uptime, dataChar, 10);
 
   	if (m_interfaceType == EEthernetShield)

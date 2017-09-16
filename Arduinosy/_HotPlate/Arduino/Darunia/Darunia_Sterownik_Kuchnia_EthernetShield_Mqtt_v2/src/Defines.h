@@ -4,6 +4,7 @@
 #define INT_TIMER_PERIOD   3000 // in us
 #define MAX_ROLLER_TIMEOUT 30  // in secunds
 #define ROLLER_TIMEOUT     MAX_ROLLER_TIMEOUT * 1000000 / INT_TIMER_PERIOD
+#define ROLLER_IMPULS      500 * 1000 / INT_TIMER_PERIOD
 #define SENSOR_SEND_PERIOD 10  // in seconds
 #define SENS_SEND_CYCLE_PERIOD SENSOR_SEND_PERIOD * 1000000 / INT_TIMER_PERIOD
 #define ROLLER_COUNT       3
@@ -25,8 +26,8 @@
 #define MQTT_ALL_ROLETS    9500   // WSZYSTKIE ROLETY
 
 //Pinout
-#define ROLETA1UPPIN       2
-#define ROLETA1DOWNPIN     3
+#define ROLETA1UPPIN       2      // SALON
+#define ROLETA1DOWNPIN     3      // SALON
 //#define SSforSDCard        4 - reserved
 #define DIMMERPIN          5
 #define ROLETA2UPPIN       6

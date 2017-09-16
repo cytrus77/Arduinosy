@@ -2,6 +2,7 @@
 #define UPTIME_H
 
 #include <PubSubClient.h>
+#include <string.h>
 
 class MQTT;
 
@@ -14,7 +15,7 @@ class uptime
 	};
 
 private:
-  int m_mqttTopic;
+  String m_mqttTopic;
   int m_uptime;
   bool m_sendFlag;
   PubSubClient* m_mqttClient;
@@ -24,6 +25,7 @@ private:
 public:
   uptime(int topic);
   uptime(int topic, PubSubClient* client);
+	uptime(String topic, PubSubClient* client);
   uptime(int topic, MQTT* client);
 
   void getUptime(void);
