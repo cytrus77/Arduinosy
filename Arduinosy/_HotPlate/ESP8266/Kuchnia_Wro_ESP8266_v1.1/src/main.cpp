@@ -29,7 +29,7 @@ void callback(char* topic, byte* payload, unsigned int length);
 #define mqtt_user "admin"
 #define mqtt_password "Isb_C4OGD4c3"
 
-byte server[] = { 192, 168, 0, 142 };
+byte server[] = { 192, 168, 0, 222 };
 long lastMqttReconnectAttempt = 0;
 
 WiFiClient espClient;
@@ -38,13 +38,13 @@ PubSubClient client(server, 1883, callback, espClient);
 statusled StatusLed(STATUSLEDPIN, statusled::off, INT_TIMER_PERIOD);
 uptime Uptime(MQTT_UPTIME, &client);
 
-mqttSensor PirSensor  (MQTT_PIRSENSOR,   &client, PIRSENSORPIN,   DIGITALTYPE, NORMALSCALE,   PIR_SEND_CYCLE_PERIOD);
-mqttSensor LightSensor(MQTT_LIGHTSENSOR, &client, LIGHTSENSORPIN, DIGITALTYPE, INVERTEDSCALE, SENS_SEND_CYCLE_PERIOD);
-mqttSensor FloodSensor(MQTT_FLOODSENSOR, &client, FLOODSENSORPIN, DIGITALTYPE, INVERTEDSCALE, SENS_SEND_CYCLE_PERIOD);
-mqttSensor GasSensor  (MQTT_GASSENSOR,   &client, GASSENSORPIN,   ANALOGTYPE,  NORMALSCALE,   SENS_SEND_CYCLE_PERIOD);
+MqttSensor PirSensor  (MQTT_PIRSENSOR,   &client, PIRSENSORPIN,   DIGITALTYPE, NORMALSCALE,   PIR_SEND_CYCLE_PERIOD);
+MqttSensor LightSensor(MQTT_LIGHTSENSOR, &client, LIGHTSENSORPIN, ANALOGTYPE,  INVERTEDSCALE, PIR_SEND_CYCLE_PERIOD);
+MqttSensor FloodSensor(MQTT_FLOODSENSOR, &client, FLOODSENSORPIN, DIGITALTYPE, INVERTEDSCALE, SENS_SEND_CYCLE_PERIOD);
+MqttSensor GasSensor  (MQTT_GASSENSOR,   &client, GASSENSORPIN,   DIGITALTYPE, NORMALSCALE,   SENS_SEND_CYCLE_PERIOD);
 
-dimmer ledDimmer(DIMMERPIN, MQTT_DIMMER, MQTT_DIMMET_TIMEOUT, DIMMER_TIMEOUT, CYCLES_PER_SECOND);
-dimmerPir ledDimmerPir(MQTT_DIMMER_ONOFF, MQTT_DIMMER_TRIGGER, &ledDimmer, &PirSensor, &LightSensor);
+Dimmer ledDimmer(DIMMERPIN, MQTT_DIMMER, MQTT_DIMMET_TIMEOUT, DIMMER_TIMEOUT, CYCLES_PER_SECOND);
+DimmerPir ledDimmerPir(MQTT_DIMMER, MQTT_DIMMER_TRIGGER, &ledDimmer, &PirSensor, &LightSensor);
 
 OneWire oneWire(DS18B20PIN);
 DallasTemperature DS18B20(&oneWire);
@@ -54,6 +54,7 @@ void setup_wifi(void);
 boolean mqttConnect(void);
 void TimerLoop(void);
 void sendAllSubscribers(void);
+void subscribe(const String& topic);
 
 /////////////////////////////////////////////START SETUP/////////////////////////////////////////////////
 void setup() {
@@ -166,7 +167,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   // as the orignal payload buffer will be overwritten whilst
   // constructing the PUBLISH packet.
   int data = 0;
-  int topic_int = 0;
+  String topicStr(topic);
 
   #ifdef DEBUG
   Serial.print(topic);
@@ -181,58 +182,18 @@ void callback(char* topic, byte* payload, unsigned int length) {
   memcpy(p,payload,length);
   p[length] = 0;
   data = (char) *p;
-  topic_int = atoi(topic);
   int data_int  = atoi((char *) p);
 
-  if (topic_int == ledDimmer.getMqttTopic())
-  {
+  if (topicStr == ledDimmer.getMqttTopic())
     ledDimmer.setValue(data_int);
-  }
-  else if (topic_int == ledDimmer.getTimeoutMqttTopic())
-  {
+  else if (topicStr == ledDimmer.getTimeoutMqttTopic())
     ledDimmer.setTimeout(data_int*60);
-  }
-  else if (topic_int == ledDimmerPir.getLightMqttTopic())
-  {
+  else if (topicStr == ledDimmerPir.getLightMqttTopic())
     ledDimmerPir.setLightTrigger(data_int);
-  }
-  else if (topic_int == ledDimmerPir.getPirMqttTopic())
-  {
+  else if (topicStr == ledDimmerPir.getPirMqttTopic())
     ledDimmerPir.setPirFlag(!data_int);
-  }
-  else if (topic_int == MQTT_SUBSCRIBE)
-  {
-    sendAllSubscribers();
-  }
-
   // Free the memory
   free(p);
-}
-
-void sendMqtt(int topic, int value)
-{
-  char topicChar[6];
-  char dataChar[6];
-  itoa(topic, topicChar, 10);
-  itoa(value, dataChar, 10);
-  client.publish(topicChar, dataChar);
-
-  Serial.println("Sending MQTT");
-  Serial.println(topicChar);
-  Serial.println(dataChar);
-}
-
-void sendMqtt(int topic, float value)
-{
-  char topicChar[6];
-  char dataChar[8];
-  itoa(topic, topicChar, 10);
-  ftoa(value, dataChar);
-  client.publish(topicChar, dataChar);
-
-  Serial.println("Sending MQTT");
-  Serial.println(topicChar);
-  Serial.println(dataChar);
 }
 
 boolean mqttConnect()
@@ -243,21 +204,19 @@ boolean mqttConnect()
     delay(200);
     sendAllSubscribers();
   }
-
   return client.connected();
 }
 
 void sendAllSubscribers(void)
 {
-    char topicChar[6];
+    subscribe(ledDimmer.getMqttTopic());
+    subscribe(ledDimmer.getTimeoutMqttTopic());
+    subscribe(ledDimmerPir.getLightMqttTopic());
+}
 
-    itoa(ledDimmer.getMqttTopic(), topicChar, 10);
-    client.subscribe(topicChar);
-    itoa(ledDimmer.getTimeoutMqttTopic(), topicChar, 10);
-    client.subscribe(topicChar);
-
-    itoa(ledDimmerPir.getPirMqttTopic(), topicChar, 10);
-    client.subscribe(topicChar);
-    itoa(ledDimmerPir.getLightMqttTopic(), topicChar, 10);
-    client.subscribe(topicChar);
+void subscribe(const String& topic)
+{
+    client.subscribe(topic.c_str());
+    Serial.print("Subscribed ");
+    Serial.println(topic);
 }

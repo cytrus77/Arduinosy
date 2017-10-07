@@ -23,10 +23,9 @@ private:
   const int m_interfaceType;
 
 public:
-  uptime(int topic);
-  uptime(int topic, PubSubClient* client);
-	uptime(String topic, PubSubClient* client);
-  uptime(int topic, MQTT* client);
+  uptime(const String& topic);
+  uptime(const String& topic, PubSubClient* client);
+  uptime(const String& topic, MQTT* client);
 
   void getUptime(void);
   void sendIfChanged();

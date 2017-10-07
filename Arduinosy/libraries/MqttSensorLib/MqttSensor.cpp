@@ -6,44 +6,32 @@
 
 #include "MqttSensor.h"
 
-//#define DEBUG 1
-
-mqttSensor::mqttSensor(int topic, PubSubClient* client, int pin, EInputType inputType, EScaleType invertedScale, unsigned long send_period)
-  : IMqttSensor(topic, client, send_period),
-    m_pin(pin),
-    m_invertedScale(invertedScale),
-    m_inputType(inputType)
+MqttSensor::MqttSensor(const String& topic, PubSubClient* client, const int pin,
+                       EInputType inputType, EScaleType invertedScale, unsigned long send_period)
+ : IMqttSensor(topic, client, send_period),
+   m_pin(pin),
+   m_invertedScale(invertedScale),
+   m_inputType(inputType)
 {
   pinMode(m_pin, INPUT);
 }
 
-mqttSensor::~mqttSensor()
-{
-}
+MqttSensor::~MqttSensor()
+{}
 
-void mqttSensor::doMeasure()
+void MqttSensor::doMeasure()
 {
   int old_value = m_value;
 
   if(m_inputType == ANALOGTYPE)
   {
-	analogRead(m_pin);
     int tempValue = analogRead(m_pin);
-	#ifdef DEBUG
-	Serial.print("ANALOG - tempValue=");
-	Serial.println(tempValue);
-	#endif
     if(m_invertedScale) m_value = map(tempValue, 0, 1024, 100, 0);
     else                m_value = map(tempValue, 0, 1024, 0, 100);
   }
   else if (m_inputType == DIGITALTYPE)
   {
-    digitalRead(m_pin);
     m_value = digitalRead(m_pin);
-  	#ifdef DEBUG
-  	Serial.print("DIGITAL - tempValue=");
-  	Serial.println(m_value);
-  	#endif
 	  if(m_invertedScale) m_value = !m_value;
   }
 
@@ -51,16 +39,9 @@ void mqttSensor::doMeasure()
   {
     m_valureChangedFlag = true;
   }
-
-  #ifdef DEBUG
-  Serial.print("MqttTopic=");
-  Serial.print(m_mqttTopic);
-  Serial.print(" mqttSensor::doMeasure() value=");
-  Serial.println(m_value);
-  #endif
 }
 
-bool mqttSensor::doMeasureAndSendDataIfItsTime()
+bool MqttSensor::doMeasureAndSendDataIfItsTime()
 {
 	if (isItTimeToSend())
 	{
@@ -74,7 +55,7 @@ bool mqttSensor::doMeasureAndSendDataIfItsTime()
 	}
 }
 
-bool mqttSensor::doMeasureAndSendDataIfItsTimeAndValueChanged()
+bool MqttSensor::doMeasureAndSendDataIfItsTimeAndValueChanged()
 {
 	if (isItTimeToSend())
 	{
@@ -88,7 +69,7 @@ bool mqttSensor::doMeasureAndSendDataIfItsTimeAndValueChanged()
 	}
 }
 
-bool mqttSensor::doMeasureIfItsTime()
+bool MqttSensor::doMeasureIfItsTime()
 {
 	if (isItTimeToSend())
 	{
@@ -103,12 +84,12 @@ bool mqttSensor::doMeasureIfItsTime()
 	}
 }
 
-EInputType mqttSensor::getInputType()
+EInputType MqttSensor::getInputType()
 {
   return m_inputType;
 }
 
-EScaleType mqttSensor::getScaleType()
+EScaleType MqttSensor::getScaleType()
 {
   return m_invertedScale;
 }

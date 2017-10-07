@@ -5,11 +5,8 @@
 #endif
 
 #include "IMqttSensor.h"
-//#include "Utils.h"
 
-#define DEBUG 1
-
-IMqttSensor::IMqttSensor(int topic, PubSubClient* client, unsigned long send_period)
+IMqttSensor::IMqttSensor(const String& topic, PubSubClient* client, unsigned long send_period)
   : m_value(0),
     m_mqttTopic(topic),
     m_itsTimeToSendFlag(false),
@@ -17,14 +14,12 @@ IMqttSensor::IMqttSensor(int topic, PubSubClient* client, unsigned long send_per
     m_sendPeriod(send_period),
     m_sendTimer(send_period),
     m_mqttClient(client)
-{
-}
+{}
 
 IMqttSensor::~IMqttSensor()
-{
-}
+{}
 
-int IMqttSensor::getMqttTopic()
+const String& IMqttSensor::getMqttTopic()
 {
   return m_mqttTopic;
 }
@@ -66,29 +61,16 @@ void IMqttSensor::clearSendFlag()
   m_itsTimeToSendFlag = false;
 }
 
-
 bool IMqttSensor::sendDataIfValueChanged()
 {
-	if (m_valureChangedFlag)
-	{
-		return sendData();
-	}
-	else
-	{
-		return false;
-	}
+	if (m_valureChangedFlag) return sendData();
+	else return false;
 }
 
 bool IMqttSensor::sendDataIfItsTime()
 {
-	if (m_valureChangedFlag)
-	{
-		return sendData();
-	}
-	else
-	{
-		return false;
-	}
+	if (m_valureChangedFlag) return sendData();
+	else return false;
 }
 
 bool IMqttSensor::sendDataIfItsTimeAndValueChanged()
@@ -100,7 +82,6 @@ bool IMqttSensor::sendDataIfItsTimeAndValueChanged()
 	else
 	{
 		clearSendFlag();
-
 		return false;
 	}
 }
@@ -113,32 +94,24 @@ bool IMqttSensor::sendData()
 	return true;
 }
 
-void IMqttSensor::sendMqttPacket(int topic, int value)
+void IMqttSensor::sendMqttPacket(const String& topic, int value)
 {
-  char topicChar[6];
-  char dataChar[6];
-  itoa(topic, topicChar, 10);
+  char dataChar[8];
   itoa(value, dataChar, 10);
-  m_mqttClient->publish(topicChar, dataChar);
-
-  #ifdef DEBUG
-  Serial.println("Sending MQTT int");
-  Serial.println(topicChar);
-  Serial.println(dataChar);
-  #endif
+  m_mqttClient->publish(topic.c_str(), dataChar);
+  Serial.print("Topic=");
+  Serial.print(topic.c_str());
+  Serial.print(" value=");
+  Serial.println(value);
 }
 
-void IMqttSensor::sendMqttPacket(int topic, float value)
+void IMqttSensor::sendMqttPacket(const String& topic, float value)
 {
-  char topicChar[6];
   char dataChar[8];
-  itoa(topic, topicChar, 10);
   ftoa(value, dataChar);
-  m_mqttClient->publish(topicChar, dataChar);
-
-  #ifdef DEBUG
-  Serial.println("Sending MQTT float");
-  Serial.println(topicChar);
-  Serial.println(dataChar);
-  #endif
+  m_mqttClient->publish(topic.c_str(), dataChar);
+  Serial.print("Topic=");
+  Serial.print(topic.c_str());
+  Serial.print(" value=");
+  Serial.println(value);
 }

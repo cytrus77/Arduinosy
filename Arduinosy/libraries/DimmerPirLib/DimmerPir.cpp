@@ -6,10 +6,9 @@
 
 #include "DimmerPir.h"
 
-//#define DEBUG 1
 
-
-dimmerPir::dimmerPir(int mqttPirTopic, int mqttLightTopic, dimmer* dimmer, bool* pirStatus, mqttSensor* lightSensor)
+DimmerPir::DimmerPir(const String& mqttPirTopic, const String& mqttLightTopic,
+                     Dimmer* dimmer, bool* pirStatus, MqttSensor* lightSensor)
   : m_mqttPirTopic(mqttPirTopic),
 	m_mqttLightTriggerTopic(mqttLightTopic),
 	m_pirOnFlag(true),
@@ -21,7 +20,8 @@ dimmerPir::dimmerPir(int mqttPirTopic, int mqttLightTopic, dimmer* dimmer, bool*
 {
 }
 
-dimmerPir::dimmerPir(int mqttPirTopic, int mqttLightTopic, dimmer* dimmer, mqttSensor* pirSensor, mqttSensor* lightSensor)
+DimmerPir::DimmerPir(const String& mqttPirTopic, const String& mqttLightTopic,
+                     Dimmer* dimmer, MqttSensor* pirSensor, MqttSensor* lightSensor)
   : m_mqttPirTopic(mqttPirTopic),
 	m_mqttLightTriggerTopic(mqttLightTopic),
 	m_pirOnFlag(true),
@@ -33,7 +33,7 @@ dimmerPir::dimmerPir(int mqttPirTopic, int mqttLightTopic, dimmer* dimmer, mqttS
 {
 }
 
-void dimmerPir::checkSensors()
+void DimmerPir::checkSensors()
 {
 	if (m_pirOnFlag)
 	{
@@ -60,7 +60,6 @@ void dimmerPir::checkSensors()
           if (m_lightSensor->getValue() <= m_lightTrigger)
           {
             m_dimmer->setValue(100);
-            Serial.println("Set light to 100 !");
           }
         }
         else if (m_lightSensor->getInputType() == DIGITALTYPE)
@@ -70,7 +69,6 @@ void dimmerPir::checkSensors()
             if (m_lightSensor->getValue())
             {
               m_dimmer->setValue(100);
-              Serial.println("Set light to 100 !");
             }
           }
           else if (m_lightSensor->getScaleType() == INVERTEDSCALE)
@@ -78,7 +76,6 @@ void dimmerPir::checkSensors()
             if (!m_lightSensor->getValue())
             {
               m_dimmer->setValue(100);
-              Serial.println("Set light to 100 !");
             }
           }
         }
@@ -88,42 +85,29 @@ void dimmerPir::checkSensors()
         m_dimmer->resetTimer();
       }
     }
-
-    #ifdef DEBUG
-    Serial.print("DimmerPir values m_pirOnFlag=");
-    Serial.print(m_pirOnFlag);
-    Serial.print(" dimmerValue=");
-    Serial.print(m_dimmer->getValue());
-    Serial.print(" moveDeteced=");
-    Serial.print(moveDeteced);
-    Serial.print(" m_currentLight=");
-    Serial.print(m_lightSensor->getValue());
-    Serial.print(" m_lightTrigger=");
-    Serial.println(m_lightTrigger);
-    #endif
 	}
 }
 
-void dimmerPir::setLightTrigger(int light)
+void DimmerPir::setLightTrigger(int light)
 {
 	m_lightTrigger = light;
 
 	checkSensors();
 }
 
-void dimmerPir::setPirFlag(bool pirFlag)
+void DimmerPir::setPirFlag(bool pirFlag)
 {
 	m_pirOnFlag = pirFlag;
 
 	checkSensors();
 }
 
-int dimmerPir::getPirMqttTopic()
+const String& DimmerPir::getPirMqttTopic()
 {
 	return m_mqttPirTopic;
 }
 
-int dimmerPir::getLightMqttTopic()
+const String& DimmerPir::getLightMqttTopic()
 {
 	return m_mqttLightTriggerTopic;
 }

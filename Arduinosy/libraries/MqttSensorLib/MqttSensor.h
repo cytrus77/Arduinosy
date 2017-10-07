@@ -1,7 +1,8 @@
-#ifndef MQTTSENSOR_H
-#define MQTTSENSOR_H
+#ifndef MqttSensor_H
+#define MqttSensor_H
 
 #include "IMqttSensor.h"
+#include <string.h>
 
 enum EInputType
 {
@@ -16,7 +17,7 @@ enum EScaleType
 };
 
 
-class mqttSensor : public IMqttSensor
+class MqttSensor : public IMqttSensor
 {
 private:
   int  m_pin;
@@ -24,8 +25,9 @@ private:
   EInputType m_inputType;
 
 public:
-  mqttSensor(int topic, PubSubClient* client, int pin, EInputType inputType, EScaleType invertedScale, unsigned long send_period);
-  virtual ~mqttSensor();
+	MqttSensor(const String& topic, PubSubClient* client, const int pin,
+		         EInputType inputType, EScaleType invertedScale, unsigned long send_period);
+  virtual ~MqttSensor();
 
   void doMeasure();
   bool doMeasureIfItsTime();

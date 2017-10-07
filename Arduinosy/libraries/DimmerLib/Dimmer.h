@@ -1,12 +1,15 @@
-#ifndef DIMMER_H
-#define DIMMER_H
+#ifndef Dimmer_H
+#define Dimmer_H
 
-class dimmer
+#include <string.h>
+
+
+class Dimmer
 {
 private:
   int m_setValue;
-  int m_mqttTopic;
-  int m_mqttTimeoutTopic;
+  String m_mqttTopic;
+  String m_mqttTimeoutTopic;
   unsigned long m_cyclesInSecond;
   unsigned long m_timeout;
   unsigned long m_timer;
@@ -16,14 +19,15 @@ private:
   void setupHw();
 
 public:
-  dimmer(int pin, int mqttTopic);
-  dimmer(int pin, int mqttTopic, int mqttTimeoutTopic, unsigned long timeout, unsigned long cyclesInSecond);
+  Dimmer(const int pin, const String& mqttTopic);
+  Dimmer(const int pin, const String& mqttTopic, const String& mqttTimeoutTopic,
+         unsigned long timeout, unsigned long cyclesInSecond);
   void setDimmer(void);
   void setValue(int value);
   void setTimeout(unsigned long timeout);
 
-  int getMqttTopic();
-  int getTimeoutMqttTopic();
+  const String& getMqttTopic();
+  const String& getTimeoutMqttTopic();
   int getValue();
   int getCurrentValue();
 

@@ -1,30 +1,32 @@
-#ifndef DIMMERPIR_H
-#define DIMMERPIR_H
+#ifndef DimmerPIR_H
+#define DimmerPIR_H
 
 #include "Dimmer.h"
 #include "MqttSensor.h"
 
 
-class dimmerPir
+class DimmerPir
 {
 private:
-	int   m_mqttPirTopic;
-	int   m_mqttLightTriggerTopic;
+	String m_mqttPirTopic;
+	String m_mqttLightTriggerTopic;
 	bool  m_pirOnFlag;
 	bool* m_currentPir;
 	int   m_lightTrigger;
-	dimmer* m_dimmer;
-	mqttSensor* m_lightSensor;
-	mqttSensor* m_pirSensor;
+	Dimmer* m_dimmer;
+	MqttSensor* m_lightSensor;
+	MqttSensor* m_pirSensor;
 
 public:
-	dimmerPir(int mqttPirTopic, int mqttLightTopic, dimmer* dimmer, bool* pirStatus, mqttSensor* lightSensor);
-	dimmerPir(int mqttPirTopic, int mqttLightTopic, dimmer* dimmer, mqttSensor* pirSensor, mqttSensor* lightSensor);
+	DimmerPir(const String& mqttPirTopic, const String& mqttLightTopic,
+		        Dimmer* dimmer, bool* pirStatus, MqttSensor* lightSensor);
+	DimmerPir(const String& mqttPirTopic, const String& mqttLightTopic,
+		        Dimmer* dimmer, MqttSensor* pirSensor, MqttSensor* lightSensor);
 
 	void checkSensors();
 
-	int getPirMqttTopic();
-	int getLightMqttTopic();
+	const String& getPirMqttTopic();
+	const String& getLightMqttTopic();
 
 	void setLightTrigger(int light);
 	void setPirFlag(bool pirFlag);

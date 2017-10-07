@@ -3,6 +3,8 @@
 
 #include "IMqttSensor.h"
 #include <DallasTemperature.h>
+#include <string.h>
+
 
 class ds18b20mqtt : public IMqttSensor
 {
@@ -13,7 +15,7 @@ private:
   bool sendData();
 
 public:
-  ds18b20mqtt(int topic, PubSubClient* client, DallasTemperature* ds18b20, unsigned long send_period);
+  ds18b20mqtt(const String& topic, PubSubClient* client, DallasTemperature* ds18b20, unsigned long send_period);
   virtual ~ds18b20mqtt();
 
   void doMeasure();

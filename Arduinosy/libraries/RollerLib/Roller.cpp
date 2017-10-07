@@ -6,7 +6,7 @@
 
 #include "Roller.h"
 
-roller::roller(int topic, int pin_up, int pin_down, unsigned long timeout_set, ActiveState state)
+roller::roller(const String& topic, const int pin_up, int pin_down, unsigned long timeout_set, ActiveState state)
 {
   m_state = ROLLER_OFF;
   m_topic = topic;
@@ -83,7 +83,7 @@ void roller::setState(bool state, bool direction)
   Serial.println(m_direction);
 }
 
-int roller::getTopic()
+const String& roller::getMqttTopic()
 {
   return m_topic;
 }
