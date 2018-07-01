@@ -8,19 +8,11 @@ class MQTT;
 
 class uptime
 {
-	enum EInterfaceType
-	{
-		EEthernetShield = 0,
-		EESP8266        = 1
-	};
-
 private:
   String m_mqttTopic;
-  int m_uptime;
+  long m_uptime;
   bool m_sendFlag;
   PubSubClient* m_mqttClient;
-  MQTT* m_espMqttClient;
-  const int m_interfaceType;
 
 public:
   uptime(const String& topic);

@@ -2,56 +2,20 @@
 #define DEFINES_H
 
 // PINOUT
-// PIN 0 - TX serial
-// PIN 1 - RX serial
-#define ZERODETECTPIN        2
-#define MQTTRXPIN            3
-#define MQTTTXPIN            4
-#define ROLLERUPPIN          5
-#define ROLLERDOWNPIN        6
-//#define NOTUSED            7
-#define SWITCHDOWNPIN        8
-#define SWITCHUPPIN          9
-//#define NOTUSED            10
-//#define NOTUSED            11
-#define MQTTROLLERDOWNPIN    12
-#define MQTTROLLERUPPIN      13
-//#define NOTUSED            A0
-//#define NOTUSED            A1
-//#define NOTUSED            A2
-//#define NOTUSED            A3
-//#define NOTUSED            A4
-//#define NOTUSED            A5
+// PIN 0 - TX serial - RS485
+// PIN 1 - RX serial - RS485
+const unsigned int rollerUpPin   = 2;
+const unsigned int rollerDownPin = 3;
+const unsigned int switchUpPin   = 4;
+const unsigned int switchDownPin = 5;
+const unsigned int statusLedPin  = 6;
 
 // measurement period
-const unsigned int  TIMER0PERIOD = 1000;  // 1ms
-const unsigned long COUNTIN1SEC  = 1000000/TIMER0PERIOD;
-const unsigned long COUNTIN1MS   = 1000/TIMER0PERIOD;
-const unsigned int MQTTRXTIMEOUT = 50;   // 50ms
-const unsigned int MQTTTXTIMEOUT = 3;    // 3s
-const unsigned int ROLLERTIMEOUT = 30;   // 30s
-const unsigned int BUTTONTIMEOUT = 5;    // 5s
+const unsigned int  timer0Period = 1000;  // 1ms
+const unsigned long countsIn1sec = 1000000/timer0Period;
+const unsigned long countsIn1ms  = 1000/timer0Period;
+const unsigned int  longButtonCommandTimer = 5;    // 5s
 
-enum ERollerState
-{
-  ERollerNone,
-  ERollerStop,
-  ERollerUp,
-  ERollerDown
-};
 
-enum EInputStatus
-{
-  ENone,
-  ESwitchUp,
-  ESwitchDown,
-  ESwitchBoth,
-  ESwitchUpLong,
-  ESwitchDownLong,
-  ESwitchBothLong,
-  EMqttUp,
-  EMqttDown,
-  EMqttStop
-};
 
 #endif

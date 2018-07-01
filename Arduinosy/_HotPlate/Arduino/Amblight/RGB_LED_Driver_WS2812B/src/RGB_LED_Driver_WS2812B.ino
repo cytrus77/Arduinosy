@@ -1,8 +1,8 @@
 #include <Adafruit_NeoPixel.h>
 
 #define PIN 6
-#define NUM_LED 104 // 31x21
-#define NUM_DATA 314 // NUM_LED * 3 + 2
+#define NUM_LED 50 // 31x21
+#define NUM_DATA 152 // NUM_LED * 3 + 2
 #define RECON_TIME 2000 // after x seconds idle time, send afk again.
 
 // Parameter 1 = number of pixels in strip
@@ -32,22 +32,22 @@ void setup() {
       if (index >= NUM_DATA){
         Serial.write('y');
         last_afk =  millis();
-        index = 0;    
+        index = 0;
 
         if ((led_color[0] == 'o') && (led_color[1] == 'z')){
           // update LEDs
           for(int i=0; i<NUM_LED; i++)
-          {             
-            int led_index = i*3 + 2;            
-            strip.setPixelColor(i, strip.Color(led_color[led_index], led_color[led_index+1], led_color[led_index+2]));          
-          }           
-          strip.show();                   
-          }               
-        }           
-       }     
+          {
+            int led_index = i*3 + 2;
+            strip.setPixelColor(i, strip.Color(led_color[led_index], led_color[led_index+1], led_color[led_index+2]));
+          }
+          strip.show();
+          }
+        }
+       }
        else
-       {           
-        cur_time = millis();      
+       {
+        cur_time = millis();
         if (cur_time - last_afk > RECON_TIME){
         Serial.write('y');
         last_afk =  cur_time;

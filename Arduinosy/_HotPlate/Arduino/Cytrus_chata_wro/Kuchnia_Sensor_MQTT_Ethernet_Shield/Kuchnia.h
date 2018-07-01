@@ -52,8 +52,8 @@ boolean mqtt_status = false;
 
 // Update these with values suitable for your network.
 byte mac[]    = {  0xDA, 0xED, 0xBA, 0xFE, 0xFE, 0xEF };
-byte server[] = { 192, 168, 137, 2};
-byte ip[]     = { 192, 168, 137, 100 };
+byte server[] = { 192, 168, 38, 11};
+byte ip[]     = { 192, 168, 38, 248 };
 
 #endif
 

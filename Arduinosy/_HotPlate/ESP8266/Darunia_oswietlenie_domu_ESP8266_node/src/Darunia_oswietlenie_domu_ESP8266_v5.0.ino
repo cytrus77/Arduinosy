@@ -21,9 +21,12 @@ void callback(char* topic, byte* payload, unsigned int length);
 #define mqtt_user      "admin"
 #define mqtt_password  "Isb_C4OGD4c3"
 
-#define wifi_ssid "Darunia_i_Tobik"
-#define wifi_password "tobiasz1986"
-byte server[] = { 192, 168, 17, 30 };
+//#define wifi_ssid "Darunia_i_Tobik"
+//#define wifi_password "tobiasz1986"
+//byte server[] = { 192, 168, 17, 30 };
+#define wifi_ssid "www.jambonet.pl M"
+#define wifi_password "makarymakary"
+byte server[] = { 192, 168, 1, 30 };
 // #define wifi_ssid "cytrynowa_wro"
 // #define wifi_password "limonkowy"
 // byte server[] = { 192, 168, 0, 142 };

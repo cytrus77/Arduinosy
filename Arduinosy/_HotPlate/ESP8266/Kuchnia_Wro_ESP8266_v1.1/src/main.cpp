@@ -7,7 +7,6 @@
 #include "DS18B20_mqtt.h"
 
 #include "Defines.h"
-#include "Roller.h"
 #include "Dimmer.h"
 #include "DimmerPir.h"
 #include "StatusLed.h"
@@ -29,7 +28,7 @@ void callback(char* topic, byte* payload, unsigned int length);
 #define mqtt_user "admin"
 #define mqtt_password "Isb_C4OGD4c3"
 
-byte server[] = { 192, 168, 0, 222 };
+byte server[] = { 192, 168, 0, 103 };
 long lastMqttReconnectAttempt = 0;
 
 WiFiClient espClient;

@@ -17,6 +17,8 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
   Modified 2012 by Todd Krein (todd@krein.org) to implement repeated starts
+  Modified December 2014 by Ivan Grokhotkov (ivan@esp8266.com) - esp8266 support
+  Modified April 2015 by Hrsto Gochkov (ficeto@ficeto.com) - alternative esp8266 support
 */
 
 #ifndef TwoWire_h
@@ -24,6 +26,8 @@
 
 #include <inttypes.h>
 #include "Stream.h"
+
+
 
 #define BUFFER_LENGTH 32
 
@@ -46,26 +50,34 @@ class TwoWire : public Stream
     static void onReceiveService(uint8_t*, int);
   public:
     TwoWire();
+    void begin(int sda, int scl);
+    void pins(int sda, int scl) __attribute__((deprecated)); // use begin(sda, scl) in new code
     void begin();
     void begin(uint8_t);
     void begin(int);
+    void setClock(uint32_t);
+    void setClockStretchLimit(uint32_t);
     void beginTransmission(uint8_t);
     void beginTransmission(int);
     uint8_t endTransmission(void);
     uint8_t endTransmission(uint8_t);
+    size_t requestFrom(uint8_t address, size_t size, bool sendStop);
+	uint8_t status();
+
     uint8_t requestFrom(uint8_t, uint8_t);
     uint8_t requestFrom(uint8_t, uint8_t, uint8_t);
     uint8_t requestFrom(int, int);
     uint8_t requestFrom(int, int, int);
+
     virtual size_t write(uint8_t);
     virtual size_t write(const uint8_t *, size_t);
     virtual int available(void);
     virtual int read(void);
     virtual int peek(void);
-	virtual void flush(void);
+    virtual void flush(void);
     void onReceive( void (*)(int) );
     void onRequest( void (*)(void) );
-  
+
     inline size_t write(unsigned long n) { return write((uint8_t)n); }
     inline size_t write(long n) { return write((uint8_t)n); }
     inline size_t write(unsigned int n) { return write((uint8_t)n); }
@@ -73,7 +85,8 @@ class TwoWire : public Stream
     using Print::write;
 };
 
+#if !defined(NO_GLOBAL_INSTANCES) && !defined(NO_GLOBAL_TWOWIRE)
 extern TwoWire Wire;
-
 #endif
 
+#endif
